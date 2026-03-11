@@ -1,0 +1,29 @@
+project:
+  stage: 1
+
+data:
+  scale: 4
+  patch_size: 64
+  augment: false
+
+model:
+  name: simple_cnn_sr
+  in_channels: 3
+  out_channels: 3
+
+train:
+  batch_size: 8
+  epochs: 50
+  lr: 0.0001
+  optimizer: adam
+
+loss:
+  name: l1
+  weight: 1.0
+
+eval:
+  metrics:
+    - psnr
+    - ssim
+  save_images: true
+  num_save_images: 8

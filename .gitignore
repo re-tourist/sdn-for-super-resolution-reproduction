@@ -1,0 +1,66 @@
+# =============================
+# Core artifacts (do not upload)
+# =============================
+data/**
+outputs/**
+results/**
+
+# Keep optional directory placeholders if you choose to add them
+!data/.gitkeep
+!data/**/.gitkeep
+!outputs/.gitkeep
+!outputs/**/.gitkeep
+!results/.gitkeep
+!results/**/.gitkeep
+
+# =============================
+# Block any file/path containing "sdn" (case-insensitive via pattern)
+# Example matches: sdn_model.py, MySDNNotes.md, module/SDN/*
+# =============================
+**/*[sS][dD][nN]*
+
+# =============================
+# Python cache / build
+# =============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+.ipynb_checkpoints/
+
+# =============================
+# Virtual environments
+# =============================
+.venv/
+venv/
+env/
+ENV/
+
+# =============================
+# Logs / temp
+# =============================
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# =============================
+# OS / Editor
+# =============================
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo

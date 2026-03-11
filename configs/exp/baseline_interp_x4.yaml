@@ -1,0 +1,15 @@
+project:
+  stage: 1
+
+data:
+  scale: 4
+
+model:
+  name: bicubic
+
+train:
+  epochs: 0
+
+eval:
+  save_images: true
+  num_save_images: 8
