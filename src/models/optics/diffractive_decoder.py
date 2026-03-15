@@ -1,15 +1,16 @@
-"""Paper-aligned diffractive decoder skeleton for Stage 3 Issue 2.
+"""Paper-aligned diffractive decoder skeleton for Stage 3 Issues 2 and 3.
 
-This module intentionally implements only the optical core:
+This module now implements the frozen Stage 3 front-half optical contract:
 
-`phi_lr -> U0 -> U_out_full`
+`phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`
 
-Intensity readout, ROI crop, and optical losses belong to later Stage 3 issues.
-The scheduling here is explicit and config-driven:
+The scheduling remains explicit and config-driven:
 
 - `L` means the number of trainable diffractive phase masks.
 - propagation from the last mask to the sensor plane is explicit.
 - there is no hidden `layer == 2` or `depth + 1` logic.
+
+Optical loss / metric computation still belongs to later Stage 3 issues.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from src.models.optics.phase_utils import (
     validate_single_channel_image,
 )
 from src.models.optics.propagation import PropagationOperator, apply_phase_modulation
+from src.models.optics.readout import ReadoutConfig, center_crop_2d, intensity_readout
 
 
 @dataclass(frozen=True)
@@ -168,6 +170,7 @@ class DiffractiveDecoder(nn.Module):
         pixel_pitch: float | Sequence[float],
         grid_config: OpticalGridConfig | Mapping[str, object],
         distance_schedule: DistanceSchedule | Mapping[str, object],
+        readout_config: ReadoutConfig | Mapping[str, object],
         phase_mask_config: PhaseMaskConfig | Mapping[str, object] | None = None,
         kernel_dtype: torch.dtype = torch.float32,
     ) -> None:
@@ -186,6 +189,7 @@ class DiffractiveDecoder(nn.Module):
         self.pixel_pitch = normalize_spacing(pixel_pitch, name="pixel_pitch")
         self.grid_config = OpticalGridConfig.from_config(grid_config)
         self.distance_schedule = DistanceSchedule.from_config(distance_schedule)
+        self.readout_config = ReadoutConfig.from_config(readout_config)
         self.phase_mask_config = PhaseMaskConfig.from_config(phase_mask_config)
         self.distance_schedule.validate_for_layers(self.num_diffractive_layers)
 
@@ -288,12 +292,12 @@ class DiffractiveDecoder(nn.Module):
             fill_value=0.0,
         )
 
-    def forward_from_field(
+    def _propagate_from_field(
         self,
         U0: torch.Tensor,
         *,
         return_intermediates: bool = False,
-    ) -> torch.Tensor | dict[str, torch.Tensor | list[torch.Tensor]]:
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
         """Run `U0 -> U_out_full` with explicit Stage 3 propagation semantics."""
         ensure_complex_field(
             U0,
@@ -324,17 +328,57 @@ class DiffractiveDecoder(nn.Module):
                     fields_after_inter_layer.append(field)
 
         U_out_full = self.last_to_sensor(field)
-        if not return_intermediates:
-            return U_out_full
-
-        return {
-            "U0": U0,
-            "field_after_input_to_first": field_after_input_to_first,
-            "phase_masks_full": phase_masks_full,
-            "fields_after_mask_modulation": fields_after_mask_modulation,
-            "fields_after_inter_layer": fields_after_inter_layer,
+        output: dict[str, torch.Tensor | list[torch.Tensor]] = {
             "U_out_full": U_out_full,
         }
+        if return_intermediates:
+            output.update(
+                {
+                    "field_after_input_to_first": field_after_input_to_first,
+                    "phase_masks_full": phase_masks_full,
+                    "fields_after_mask_modulation": fields_after_mask_modulation,
+                    "fields_after_inter_layer": fields_after_inter_layer,
+                }
+            )
+        return output
+
+    def readout_from_field(self, U_out_full: torch.Tensor) -> dict[str, torch.Tensor]:
+        """Convert full-grid output field into full-grid and ROI intensities."""
+        ensure_complex_field(
+            U_out_full,
+            name="U_out_full",
+            expected_hw=self.grid_config.propagation_hw,
+        )
+
+        I_out_full = intensity_readout(U_out_full)
+        I_out_roi = center_crop_2d(I_out_full, self.readout_config)
+        return {
+            "I_out_full": I_out_full,
+            "I_out_roi": I_out_roi,
+        }
+
+    def forward_from_field(
+        self,
+        U0: torch.Tensor,
+        *,
+        return_intermediates: bool = False,
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
+        """Run `U0 -> U_out_full -> I_out_full -> I_out_roi`."""
+        propagation_output = self._propagate_from_field(
+            U0,
+            return_intermediates=return_intermediates,
+        )
+        U_out_full = propagation_output["U_out_full"]
+        if not isinstance(U_out_full, torch.Tensor):
+            raise RuntimeError("U_out_full must be a tensor.")
+
+        output: dict[str, torch.Tensor | list[torch.Tensor]] = {
+            "U_out_full": U_out_full,
+            **self.readout_from_field(U_out_full),
+        }
+        if return_intermediates:
+            output.update(propagation_output)
+        return output
 
     def forward_from_phase(
         self,
@@ -342,15 +386,10 @@ class DiffractiveDecoder(nn.Module):
         *,
         amplitude: torch.Tensor | None = None,
         return_intermediates: bool = False,
-    ) -> torch.Tensor | dict[str, torch.Tensor | list[torch.Tensor]]:
-        """Run the Stage 3 front-half chain `phi_lr -> U0 -> U_out_full`."""
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
+        """Run the Stage 3 optical chain `phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`."""
         U0 = self.build_input_field(phi_lr, amplitude=amplitude)
         output = self.forward_from_field(U0, return_intermediates=return_intermediates)
-        if not return_intermediates:
-            return output
-
-        if not isinstance(output, dict):
-            raise RuntimeError("Expected a dictionary when return_intermediates=True.")
         output["U0"] = U0
         return output
 
@@ -360,7 +399,7 @@ class DiffractiveDecoder(nn.Module):
         *,
         amplitude: torch.Tensor | None = None,
         return_intermediates: bool = False,
-    ) -> torch.Tensor | dict[str, torch.Tensor | list[torch.Tensor]]:
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
         return self.forward_from_phase(
             phi_lr,
             amplitude=amplitude,
