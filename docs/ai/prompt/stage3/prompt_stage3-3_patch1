@@ -1,0 +1,64 @@
+Task: add a minimal reproducible validation asset for Stage 3 Issue 3 readout/crop.
+
+Context
+-------
+Issue 3 implementation has already landed the Stage 3 readout/crop chain:
+
+phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi
+
+Current implementation work is acceptable and should be preserved.
+Do NOT redesign the decoder.
+Do NOT revisit propagation core.
+Do NOT start Issue 4 sanity checks yet.
+Do NOT add trainer, fitting loop, metrics integration, or joint training.
+
+The remaining gap is that Issue 3 validation currently exists only as inline/manual checks,
+not as a reusable repository asset.
+
+Goal
+----
+Create a minimal reproducible validation entry for Issue 3 so that the readout/crop behavior
+can be rerun later without relying on chat logs or one-off inline commands.
+
+Scope
+-----
+Only do a small closeout patch for Issue 3.
+
+Preferred output:
+- a lightweight script under `scripts/` or equivalent location
+  (for example `scripts/check_optical_readout.py`)
+OR
+- if repository constraints make that impossible, add a clearly documented runnable validation note
+  in the appropriate docs/execution location with exact command examples.
+
+Required checks
+---------------
+The validation asset must cover at least:
+
+1. `U_out_full` is complex
+2. `I_out_full` and `I_out_roi` are real and nonnegative
+3. changing `output_crop_hw` changes ROI shape correctly
+4. oversized crop raises an explicit error
+5. changing input phase changes `I_out_full` and `I_out_roi`
+
+Constraints
+-----------
+- Do NOT change the Stage 3 contract
+- Do NOT rewrite public forward API unless absolutely necessary for the validation script
+- Do NOT add Issue 4 content
+- Do NOT add normalized MAE / PSNR / SSIM here
+- Keep the patch minimal and localized
+
+Optional
+--------
+If a tiny doc update is natural, add a short Issue 3 closeout note referencing
+the validation entry point, but do not expand into a larger documentation rewrite.
+
+Report back
+-----------
+After editing, report:
+
+- which files were modified
+- what validation entry was added
+- whether the validation now covers all 5 checks above
+- whether Issue 3 can now be considered cleanly closed

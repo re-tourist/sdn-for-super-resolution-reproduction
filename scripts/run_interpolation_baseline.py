@@ -28,6 +28,20 @@ from src.eval.evaluator import evaluate_batch
 
 
 INTERP_MODES = ("bilinear", "bicubic")
+INTERP_DEFAULTS: Dict[str, Any] = {
+    "split": "train",
+    "emnist_split": "letters",
+    "num_samples": 100,
+    "seed": 42,
+    "output_dir": "outputs/interpolation/train",
+    "mode": "bicubic",
+    "hr_size": 96,
+    "scale": 4,
+    "val_ratio": 0.1,
+    "save_grid": True,
+    "save_individual": True,
+    "download": False,
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,6 +97,54 @@ def get_nested(cfg: Dict[str, Any], keys: Sequence[str], default: Any = None) ->
 
 
 def resolve_runtime_args(args: argparse.Namespace, cfg: Dict[str, Any]) -> argparse.Namespace:
+    # CLI has priority; apply config only when argument is still parser default.
+    seed_cfg = get_nested(cfg, ("seed",), None)
+    if args.seed == INTERP_DEFAULTS["seed"] and seed_cfg is not None:
+        args.seed = int(seed_cfg)
+
+    split_cfg = get_nested(cfg, ("data", "split"), None)
+    if args.split == INTERP_DEFAULTS["split"] and split_cfg is not None:
+        args.split = str(split_cfg)
+
+    emnist_split_cfg = get_nested(cfg, ("data", "emnist_split"), None)
+    if args.emnist_split == INTERP_DEFAULTS["emnist_split"] and emnist_split_cfg is not None:
+        args.emnist_split = str(emnist_split_cfg)
+
+    num_samples_cfg = get_nested(cfg, ("data", "num_samples"), None)
+    if args.num_samples == INTERP_DEFAULTS["num_samples"] and num_samples_cfg is not None:
+        args.num_samples = int(num_samples_cfg)
+
+    output_dir_cfg = get_nested(cfg, ("output", "dir"), None)
+    if args.output_dir == INTERP_DEFAULTS["output_dir"] and output_dir_cfg is not None:
+        args.output_dir = str(output_dir_cfg)
+
+    mode_cfg = get_nested(cfg, ("model", "mode"), None)
+    if args.mode == INTERP_DEFAULTS["mode"] and mode_cfg is not None:
+        args.mode = str(mode_cfg)
+
+    hr_size_cfg = get_nested(cfg, ("data", "hr_size"), None)
+    if args.hr_size == INTERP_DEFAULTS["hr_size"] and hr_size_cfg is not None:
+        args.hr_size = int(hr_size_cfg)
+
+    val_ratio_cfg = get_nested(cfg, ("data", "val_ratio"), None)
+    if args.val_ratio == INTERP_DEFAULTS["val_ratio"] and val_ratio_cfg is not None:
+        args.val_ratio = float(val_ratio_cfg)
+
+    save_grid_cfg = get_nested(cfg, ("eval", "save_grid"), None)
+    if args.save_grid == INTERP_DEFAULTS["save_grid"] and save_grid_cfg is not None:
+        args.save_grid = bool(save_grid_cfg)
+
+    save_individual_cfg = get_nested(cfg, ("eval", "save_individual"), None)
+    if (
+        args.save_individual == INTERP_DEFAULTS["save_individual"]
+        and save_individual_cfg is not None
+    ):
+        args.save_individual = bool(save_individual_cfg)
+
+    download_cfg = get_nested(cfg, ("runtime", "download"), None)
+    if args.download == INTERP_DEFAULTS["download"] and download_cfg is not None:
+        args.download = bool(download_cfg)
+
     if args.dataset_root is None:
         cfg_root = get_nested(cfg, ("data", "root"), None)
         fallback_root = Path("data/raw/emnist")
