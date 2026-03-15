@@ -15,3 +15,5 @@ More order see docs/run_order.md. Here are some frequently used orders.
 - Validate Stage 3 Issue 3 optical readout/crop:
   `python scripts/check_optical_readout.py`
 
+- Run Stage 3 Issue 5 decoder-only single-sample fitting:
+  `python scripts/train_decoder_only_single_sample.py --depth 3 --steps 150`
