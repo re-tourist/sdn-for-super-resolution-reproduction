@@ -12,3 +12,12 @@
 
 More order see docs/run_order.md. Here are some frequently used orders.
 
+<<<<<<< Updated upstream
+=======
+- Validate Stage 3 Issue 3 optical readout/crop:
+  `python scripts/check_optical_readout.py`
+
+- Validate Stage 3 Issue 4 optical forward sanity for L=1/3/5:
+  `python scripts/check_optical_forward_depths.py`
+
+>>>>>>> Stashed changes
