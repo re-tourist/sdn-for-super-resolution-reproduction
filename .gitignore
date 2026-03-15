@@ -4,6 +4,7 @@
 data/**
 outputs/**
 results/**
+external/**
 
 # Keep optional directory placeholders if you choose to add them
 !data/.gitkeep
