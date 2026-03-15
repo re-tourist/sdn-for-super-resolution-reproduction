@@ -1,20 +1,27 @@
 project:
   stage: 1
 
+seed: 42
+
 data:
+  dataset_name: emnist
+  emnist_split: letters
+  hr_size: 96
   scale: 4
-  patch_size: 64
-  augment: false
+  sr_factor: 4
+  num_samples: 2000
+  val_ratio: 0.1
+  num_workers: 0
+  root: outputs/cache/emnist
 
 model:
-  name: simple_cnn_sr
-  in_channels: 3
-  out_channels: 3
+  name: electronic_baseline
+  latent_channels: 1
 
 train:
-  batch_size: 8
-  epochs: 50
-  lr: 0.0001
+  batch_size: 32
+  epochs: 10
+  lr: 0.001
   optimizer: adam
 
 loss:
@@ -25,5 +32,10 @@ eval:
   metrics:
     - psnr
     - ssim
-  save_images: true
-  num_save_images: 8
+  save_samples: true
+
+runtime:
+  download: false
+
+output:
+  dir: outputs/electronic_baseline/default_run
