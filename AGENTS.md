@@ -32,6 +32,19 @@
 - 不要在论文未明确的地方默认加入复杂 trick
 - 优先保证数据管线、评估协议、训练骨架的清晰与可验证
 
+### Stage 3 planning freeze 关键文档
+Immediate design decisions have been finalized. Future agents must follow:
+- `docs/plan/stage3_contract_freeze.md`
+- `docs/integration/stage3_unresolved_params.md`
+当任务进入 Stage 3（Optical Module Verification）的前置整理、contract freeze 或 upstream porting 评估时，下列文档已成为主要决策输入。开始实现前，应优先对齐这些文档，而不是先写光学代码：
+
+- `docs/integration/sdn_inventory.md`：盘点 `external/sdn_upstream` 中哪些 optics 能力可参考、哪些任务模块必须隔离。场景：判断“迁移什么 / 不迁移什么”时优先阅读。
+- `docs/integration/sdn_optics_contract.md`：定义 Stage 3 optical module 的最小职责、接口链路和非目标。场景：开始写 optics skeleton 或接口前必须先读。
+- `docs/integration/sdn_gap_analysis.md`：整理当前项目需求与 upstream 现状之间的关键差距和风险。场景：拆 issue、评估实现风险和排除误迁移时使用。
+- `docs/plan/stage3_sdn_porting_plan.md`：给出 Stage 3A~3F 的执行顺序、issue 拆分和验收边界。场景：安排任务顺序与分支时使用。
+- `docs/plan/stage3_contract_freeze.md`：冻结 Stage 3 的正式目标、scope、deliverables 和 non-goals。场景：进入实现前用于边界确认。
+- `docs/integration/stage3_unresolved_params.md`：汇总尚未完全拍板的论文 / 实现参数，并区分拍板时点。场景：开 issue 或写实现前先核对 P0 / P1 / P2。
+
 ---
 
 ## 目录约定
