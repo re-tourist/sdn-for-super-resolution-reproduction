@@ -6,389 +6,234 @@
 Optical Neural Network Super-Resolution Reproduction
 
 **Primary Goal:**  
-Reproduce the paper *Super-resolution image display using a diffractive optical network* with a high-quality engineering workflow, starting from the numerical phase-only mainline, then extending to ablations such as complex-valued encoding, quantization, and misalignment robustness.
+Reproduce the paper *Super-resolution image display using diffractive decoders* with a traceable engineering workflow.
 
-**Current Intent:**  
-The current goal is not to build a fully novel system yet, but to complete a rigorous reproduction pipeline that is:
-- technically correct,
-- experimentally traceable,
-- easy to extend later into optical reconstruction or hybrid optical-electronic research.
+**Current Stage:**  
+The project is entering **Stage 4: minimal closed-loop training**.
 
----
+**Important Stage-4 Principle:**  
+The goal is **not** to chase the paper's final metric yet.  
+The goal is to answer one question:
 
-## 2. Target Paper
-
-**Paper Title:**  
-Super-resolution image display using a diffractive optical network
-
-**High-Level Understanding:**  
-The paper proposes a jointly trained hybrid system:
-- a **digital/electronic encoder** generates a **low-resolution modulation pattern**,
-- an **all-optical diffractive decoder** reconstructs a **higher-resolution output image** in the output field of view.
-
-**Important Conceptual Points:**
-- The low-resolution input is **not just a normal low-res image**, but a learned **optical-friendly encoding / modulation pattern**.
-- The optical decoder is the main all-optical reconstruction / synthesis module.
-- The paper studies:
-  - phase-only vs complex-valued encoding
-  - 1 / 3 / 5 diffractive layers
-  - quantization robustness
-  - misalignment vaccination / robustness
-  - output FOV efficiency
-
-**Current Reproduction Focus:**  
-Start from the **numerical phase-only mainline**, not the full experimental THz hardware pipeline.
+> Can the full system learn under gradient-driven training once the encoder is connected to the optical decoder?
 
 ---
 
-## 3. Project Scope
+## 2. Stage Status Snapshot
 
-### In Scope (current)
-- numerical reproduction of the main optical pipeline
-- dataset preparation and sanity checks
+### Completed / trusted
+
+- Stage 0 repo scaffold and planning docs
+- Stage 1 / 2 data sanity path on EMNIST
 - interpolation baseline
-- pure electronic baseline
-- optical propagation module
-- optical decoder capacity tests
-- encoder + optical decoder end-to-end pipeline
-- paper-aligned experiments and ablations
+- pure electronic bottleneck baseline
+- unified PSNR / SSIM evaluation helpers
+- run-order documentation
+- experiment logging / troubleshooting / results summary
+- Stage 3 optical decoder skeleton
+- Stage 3 optical forward sanity checks
+- Stage 3 decoder-only single-sample fitting
+- Stage 3 decoder-only small-subset capacity checks
 
-### Out of Scope (for now)
-- full real hardware reproduction
-- full THz experimental setup
-- ambitious new optical architecture redesign
-- large-scale world-model integration
-- advanced quantization-aware training as the first milestone
+### Current focus
 
----
-
-## 4. Current Development Strategy
-
-The development is intentionally staged.
-
-### Stage philosophy
-The project is not implemented end-to-end all at once.  
-Instead, it is built in the following order:
-
-1. dataset sanity check
-2. evaluation pipeline
-3. interpolation baseline
-4. pure electronic baseline
-5. optical propagation verification
-6. optical decoder capacity verification
-7. encoder + optical decoder minimal closed loop
-8. paper-aligned experiments
-9. ablations
-10. robustness tests
-
-### Important Principle
-Before using the optical model, the following must already be trustworthy:
-- data pipeline
-- HR/LR construction
-- interpolation baseline
-- PSNR/SSIM pipeline
-- experiment logging
+- build the first **encoder + optical decoder** minimal closed loop
+- keep the setup small, debuggable, and explicitly non-paper-final
+- verify learnability before any Stage 5 paper-alignment work
 
 ---
 
-## 5. Current Project Status
+## 3. What Stage 4 Means In This Repo
 
-### Completed
-- Stage 0 initialization has been done.
-- Basic repo scaffolding and some planning documents already exist.
-- `overview.md` has been patched to better match the current paper.
-- `paper_notes.md` and `checklist.md` have been introduced / expanded.
-- Step 0 planning for Stage 1 and Stage 2 has already been clarified.
-- Issue 1 (dataset inspection script) has been implemented by Codex and is currently in **manual verification pending / provisional pass** state.
+Stage 4 in this repo means:
 
-### Current Focus
-We are currently in:
-- **Stage 1 / Stage 2 groundwork**
-- specifically around:
-  - dataset sanity check
-  - evaluation pipeline planning
-  - baseline preparation
+1. connect a minimal encoder
+2. feed encoder output into the existing optical contract
+3. train on a very small dataset first
+4. run single-sample overfit and small-subset sanity checks
+5. save enough intermediate artifacts to debug gradients, phase output, and optical readout
 
-### Immediate Next Step
-- manually verify the dataset inspection script output
-- then move to:
-  - unified evaluation pipeline
-  - interpolation baseline
+Stage 4 does **not** mean:
+
+- full paper hyperparameter alignment
+- full `96 -> learned phase pattern -> paper-exact optics` reproduction
+- quantization, misalignment, or robustness studies
+- large-scale sweeps or ablations
+
+Those belong to later stages.
 
 ---
 
-## 6. Current Understanding of the Data Pipeline
+## 4. Hard Constraints A New Assistant Must Know
 
-### Raw Data Source
-The current raw source is **EMNIST**, not MNIST.
+### 4.1 Optical contract is already frozen
 
-### Important Clarification
-At the current Stage 1 / 2:
+The Stage 3 optical path is already defined as:
 
-- EMNIST provides the **raw source images**
-- the project currently treats these as the source for **HR images**
-- **LR images are artificially constructed** by downsampling HR
-- upsampled LR is used to inspect interpolation behavior and baseline quality
+`phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`
 
-So at this stage, the current task shell is:
+Any Stage 4 plan must build on that contract rather than redesigning the optical core.
 
-`HR -> downsample -> LR -> upsample / baseline -> reconstructed HR`
+### 4.2 The optical core already exposes Stage-4 hooks
 
-This is a **sanity-check SR shell**, not yet the final learned optical pattern pipeline.
+The current optical decoder already supports:
 
-### Important Distinction
-This means:
-- current dataset inspection is checking the **basic HR/LR pipeline**
-- it is **not yet identical to the final learned low-resolution optical modulation pattern** used in the full paper pipeline
+- `forward_from_phase(...)`
+- `forward_from_field(...)`
+- `forward_from_phase_provider(...)`
 
-### Current Open Practical Choice
-The project may use one of two HR definitions depending on the implementation phase:
-1. a simpler sanity-check HR definition
-2. a more paper-aligned larger HR image (e.g. 96×96 setup)
+This means Stage 4 should primarily solve the **upstream encoder / trainer / protocol** problem, not rewrite optics first.
 
-This must be explicitly recorded in experiment logs whenever changed.
+### 4.3 Electronic baseline is already trusted
 
----
+The pure electronic bottleneck baseline has passed:
 
-## 7. Branching Strategy
+- single-sample overfit sanity
+- small-subset training sanity
 
-### Main branches
-- `main` → stable milestone versions
-- `dev` → current integration branch
+So Stage 4 should reuse it as a training/reference anchor instead of re-opening Stage 1 / 2 questions unless new evidence appears.
 
-### Other branches
-All non-main branches should be created **from `dev`**, unless a true release hotfix from `main` is needed.
+### 4.4 Current Stage 3 training scripts are still toy verification scripts
 
-### Long-lived category branches
-The current preferred style is **category-based**, not overly stage-specific:
+The Stage 3 decoder-only scripts currently use:
 
-- `feat/data`
-- `feat/scripts`
-- `feat/baseline`
-- `feat/model`
-- `feat/train`
-- `feat/eval`
-- `feat/test`
-- `feat/optics`
-- `docs/update`
-- `hotfix/<name>`
+- synthetic target patterns
+- toy grid sizes such as `24 / 32 / 48 / 20`
 
-### Rationale
-We intentionally avoid creating too many ultra-specific stage branches, because that causes:
-- low branch reuse
-- branch explosion
-- poor long-term maintainability
+They are useful for optical learnability verification, but they are **not yet** the Stage 4 end-to-end data pipeline.
 
-Instead:
-- branches provide **category-level organization**
-- issues / commits / logs provide **fine-grained traceability**
+### 4.5 Some infrastructure is still missing
+
+The repo does **not yet** have:
+
+- a real Stage 4 general trainer
+- a real Stage 4 eval runner
+- Stage 4 optics configs
+- a clean dataset module under `src/datasets/`
+- a `tests/` directory for systematic automated checks
+
+At the time of this update:
+
+- `scripts/train.py` is empty
+- `scripts/eval.py` is empty
+- `scripts/visualize.py` is empty
+
+So any Stage 4 plan must honestly treat these as pending work.
 
 ---
 
-## 8. Documentation Structure
+## 5. Current Code Assets That Matter Most
 
-The docs are organized by function, not by chat history.
+### Optical path
 
-### Recommended structure
+- `src/models/optics/diffractive_decoder.py`
+- `src/models/optics/phase_provider.py`
+- `src/models/optics/propagation.py`
+- `src/models/optics/readout.py`
+- `src/models/optics/phase_utils.py`
 
-- `docs/plan/`
-  - long-term plans
-  - execution plans
-- `docs/paper/`
-  - paper notes
-  - PDFs
-- `docs/execution/`
-  - experiment logs
-  - troubleshooting
-  - results summary
-  - checklist
-- `docs/ai/`
-  - prompts
-  - Codex / agent feedback
-  - run order
-- `docs/gitflow/`
-  - git workflow notes
+### Stage 3 verification scripts
 
-### Important Principle
-Chat history is not the project memory system.  
-The repo docs are the project memory system.
+- `scripts/check_optical_readout.py`
+- `scripts/check_optical_forward_depths.py`
+- `scripts/train_decoder_only_single_sample.py`
+- `scripts/train_decoder_only_small_subset.py`
+- `scripts/train_decoder_only_small_subset_sweep.py`
+
+### Stage 1 / 2 trusted baseline path
+
+- `scripts/train_electronic_baseline.py`
+- `src/models/electronic_baseline.py`
+- `src/eval/evaluator.py`
+- `src/eval/metrics.py`
 
 ---
 
-## 9. Important Existing / Expected Documents
+## 6. Current Documentation Sources Of Truth
 
-### Planning
-- `docs/plan/overview.md`
-- `docs/plan/reproduction_plan.md`
-- `docs/plan/execution_round_1_2.md`
+When different documents disagree, a new assistant should prioritize them in this order:
 
-### Paper
+1. `docs/plan/plan_overview.md`
+2. `docs/plan/stage3_contract_freeze.md`
+3. `docs/integration/stage3_unresolved_params.md`
+4. current code in `src/` and `scripts/`
+5. `docs/paper/paper_notes.md`
+6. `docs/execution/results_summary.md`
+7. `docs/execution/experiment_log.md`
+
+This ordering exists because some older background/context docs may lag behind the repo's actual progress.
+
+---
+
+## 7. Immediate Stage-4 Engineering Gaps
+
+The most likely Stage 4 work items are:
+
+1. define the minimal encoder output contract
+2. connect encoder output to `phi_lr`
+3. decide the first Stage 4 training scale
+   - stay toy first
+   - or move partially toward the paper setup
+4. build a real Stage 4 trainer script
+5. build Stage 4 config files
+6. define artifact saving rules
+7. define Stage 4 acceptance checks
+   - loss decreases
+   - single-sample overfit works
+   - gradients reach encoder and optics
+   - intermediate outputs are interpretable
+
+---
+
+## 8. Known Risks
+
+The main current risks are:
+
+1. confusing Stage 3 toy verification with Stage 4 real closed-loop training
+2. jumping straight to paper-aligned full settings before proving end-to-end learnability
+3. hiding unresolved choices such as phase range mapping or training scale selection
+4. writing a large trainer before defining a small acceptance protocol
+5. losing traceability by not saving configs, summaries, and intermediate visualizations
+
+---
+
+## 9. Recommended Minimal File Package For A New Chat
+
+If a user wants another assistant to plan Stage 4, the minimal useful package is:
+
+- `docs/ai/PROJECT_CONTEXT.md`
+- `docs/plan/plan_overview.md`
+- `docs/plan/stage3_contract_freeze.md`
 - `docs/paper/paper_notes.md`
-
-### Execution
-- `docs/execution/checklist.md`
-- `docs/execution/experiment_log.md`
+- `src/models/optics/diffractive_decoder.py`
+- `scripts/train_electronic_baseline.py`
+- `scripts/train_decoder_only_small_subset.py`
 - `docs/execution/results_summary.md`
-- `docs/execution/troubleshooting.md`
 
-### AI workflow
-- `docs/ai/prompts/...`
-- `docs/ai/codex_feedback/...`
-- `docs/ai/run_order.md`
+If the user can provide a bit more context, add:
 
-### Context
-- `docs/PROJECT_CONTEXT.md` (this file)
-
----
-
-## 10. Current Stage 1 / Stage 2 Task Breakdown
-
-### Stage 1
-Build a trustworthy baseline reference.
-
-Current intended subtasks:
-- dataset inspection
-- interpolation baseline
-- minimal pure electronic baseline
-- single-sample overfitting
-- small-subset training
-
-### Stage 2
-Stabilize the data and evaluation pipeline.
-
-Current intended subtasks:
-- unified PSNR/SSIM implementation
-- sample visualization standardization
-- output metric export
-- evaluation protocol documentation
-
-### Important Ordering Constraint
-The preferred execution order is:
-
-1. dataset inspection
-2. unified evaluation script
-3. interpolation baseline
-4. pure electronic baseline
-5. single-sample overfit
-6. small-subset training
-
----
-
-## 11. Current AI-Assisted Development Workflow
-
-This project uses AI coding assistance, so tasks are intentionally designed to be:
-- narrow in scope
-- easy to verify
-- low in cross-file coupling
-- issue-oriented
-
-### Preferred task style
-Each AI task should have:
-- a clear issue
-- a branch category
-- a small and local modification range
-- explicit acceptance criteria
-- explicit "do not touch" boundaries
-
-### Important Workflow Principle
-For AI-generated code:
-- merge to `dev` first
-- never merge directly to `main`
-- always record the task in logs / feedback docs
-
----
-
-## 12. Current Known Open Questions
-
-These are not fully resolved yet and may reappear in later conversations:
-
-1. what exact HR definition should be used in the earliest sanity-check SR shell
-2. how closely the early dataset should follow the paper’s larger-image setup
-3. when to introduce paper-aligned mosaic / larger image construction
-4. when to switch from simple HR/LR shell to learned low-resolution optical pattern pipeline
-5. whether phase-only should remain the sole mainline for the first full reproduction milestone
-6. when to add efficiency penalty
-7. when to introduce quantization evaluation and misalignment robustness tests
-
----
-
-## 13. Reproduction Priorities
-
-The current priority order is:
-
-1. correctness
-2. traceability
-3. reproducibility
-4. paper alignment
-5. speed
-
-This means:
-- we do not skip sanity checks just to reach the optical model faster
-- we do not trust a result that cannot be traced to config / commit / issue / log
-
----
-
-## 14. What a New Conversation Should Know Immediately
-
-If this file is pasted into a new conversation, the new assistant should understand:
-
-- this is a long-running optical neural network reproduction project
-- the target paper is about digital encoder + diffractive optical decoder for super-resolution image display
-- the project is currently still in the Stage 1 / 2 groundwork phase
-- Stage 0 planning is already done
-- dataset inspection has already been implemented and awaits manual verification
-- the next likely steps are:
-  - evaluate the inspection output
-  - build the unified metric pipeline
-  - run interpolation baseline
-- the project uses category-based git branches from `dev`
-- documentation is treated as the long-term memory of the project
-
----
-
-## 15. How to Use This File
-
-When starting a new conversation, paste this file first and say:
-
-> “This is my project context. Please read it before answering. Continue from the current project state.”
-
-If needed, also paste one or two of:
-- `docs/paper/paper_notes.md`
+- `docs/integration/stage3_unresolved_params.md`
+- `docs/integration/sdn_optics_contract.md`
 - `docs/execution/experiment_log.md`
-- `docs/plan/overview.md`
-
-depending on whether the new conversation is about:
-- paper understanding
-- engineering execution
-- debugging
-- experiment interpretation
+- `outputs/optics/decoder_only_small_subset_sweep_run1/depth_comparison.csv`
 
 ---
 
-## 16. Maintenance Rule
+## 10. One-Screen Summary
 
-This file should be updated only when one of the following changes:
+This is a long-running reproduction project for a hybrid
+`encoder -> diffractive optical decoder` super-resolution paper.
 
-- project stage changes
-- reproduction scope changes
-- branch strategy changes
-- documentation structure changes
-- current next-step focus changes
-- major architectural decision changes
+The repo has already passed:
 
-It should **not** be updated for every single experiment result.  
-Detailed experiment information belongs in:
-- experiment logs
-- result summaries
-- troubleshooting notes
+- Stage 1 / 2 baseline and evaluation groundwork
+- Stage 3 optical module verification
 
----
+The repo is now entering Stage 4:
 
-## 17. Current Minimal Quick Summary
+- connect a minimal encoder
+- reuse the frozen optical contract
+- run the first end-to-end minimal closed loop
+- prove the system can learn
 
-**Paper:** diffractive optical decoder for super-resolution display  
-**Current phase:** Stage 1 / 2 groundwork  
-**Done:** stage planning, docs patching, dataset inspection script implementation  
-**Pending:** manual inspection verification, eval pipeline, interpolation baseline  
-**Workflow:** category branches from `dev`, docs as long-term project memory  
-**Immediate next step:** verify dataset inspection output and then implement unified evaluation
+The biggest missing piece is **not optics core**, but the **Stage 4 training pipeline around it**.
