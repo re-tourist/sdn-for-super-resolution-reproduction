@@ -22,6 +22,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
+from src.models.optics.phase_provider import PhaseProvider
 from src.models.optics.phase_utils import (
     center_embed_tensor,
     ensure_complex_field,
@@ -158,7 +159,21 @@ class PhaseMaskConfig:
 
 
 class DiffractiveDecoder(nn.Module):
-    """Stage 3 optical decoder skeleton with explicit layer semantics."""
+    """Stage 3 optical decoder skeleton with explicit layer semantics.
+
+    Stable Stage 3 input entrypoints:
+
+    - `forward_from_phase(phi_lr, ...)`
+      The caller provides a real-valued phase tensor. The decoder owns the
+      phase-to-field mapping and then runs the full optical/readout chain.
+    - `forward_from_field(U0, ...)`
+      The caller provides an already constructed coherent complex field on the
+      propagation grid. The decoder skips phase mapping and starts from optics.
+
+    Future Stage 4 should plug in above `forward_from_phase(...)` by producing
+    a phase tensor that satisfies the same contract. The optical core itself
+    remains responsible only for consuming phase or field, not generating it.
+    """
 
     VALID_LAYER_COUNTS = (1, 3, 5)
 
@@ -263,7 +278,29 @@ class DiffractiveDecoder(nn.Module):
         *,
         amplitude: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Convert `phi_lr` into `U0` on the propagation grid."""
+        """Convert a phase-domain tensor into `U0` on the propagation grid.
+
+        Args:
+            phi_lr: Real-valued phase tensor shaped `[B, 1, H, W]`, where
+                `H, W == grid_config.input_pattern_hw`. Batch dimension is
+                allowed and preserved. The tensor may live on any device, and
+                `forward_from_phase(...)` keeps computation on that device.
+            amplitude: Optional real-valued amplitude tensor with the same
+                shape/device as `phi_lr`. Stage 3 mainline keeps this `None`,
+                which means amplitude is fixed to 1 everywhere.
+
+        Returns:
+            Complex coherent input field `U0` shaped
+            `[B, 1, propagation_h, propagation_w]`.
+
+        Contract notes:
+            - `phi_lr` is interpreted as a phase-domain tensor, not as a field.
+            - The decoder owns phase-to-field construction for this path.
+            - The default Stage 3 phase mapping responsibility is:
+              caller/provider supplies phase, decoder maps phase to a coherent
+              field via `exp(j * phi)` with unit amplitude unless an explicit
+              amplitude tensor is supplied.
+        """
         validate_single_channel_image(
             phi_lr,
             name="phi_lr",
@@ -363,7 +400,27 @@ class DiffractiveDecoder(nn.Module):
         *,
         return_intermediates: bool = False,
     ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
-        """Run `U0 -> U_out_full -> I_out_full -> I_out_roi`."""
+        """Run `U0 -> U_out_full -> I_out_full -> I_out_roi`.
+
+        Args:
+            U0: Complex coherent field shaped
+                `[B, 1, propagation_h, propagation_w]`. This path requires a
+                complex tensor and skips all phase-domain mapping logic.
+            return_intermediates: Whether to include propagation-stage tensors
+                used by the existing Stage 3 debugging scripts.
+
+        Returns:
+            A mapping containing at least:
+            - `U_out_full`: complex field on the sensor-plane full grid
+            - `I_out_full`: real nonnegative full-grid intensity
+            - `I_out_roi`: real nonnegative center-cropped ROI intensity
+
+        Responsibility boundary:
+            `forward_from_field(...)` assumes the caller has already built a
+            physically meaningful coherent field. Unlike
+            `forward_from_phase(...)`, it does not interpret radians or perform
+            phase-to-field conversion.
+        """
         propagation_output = self._propagate_from_field(
             U0,
             return_intermediates=return_intermediates,
@@ -387,11 +444,77 @@ class DiffractiveDecoder(nn.Module):
         amplitude: torch.Tensor | None = None,
         return_intermediates: bool = False,
     ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
-        """Run the Stage 3 optical chain `phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`."""
+        """Run the Stage 3 optical chain from phase input.
+
+        Args:
+            phi_lr: Real-valued phase tensor shaped `[B, 1, H, W]` with
+                `H, W == grid_config.input_pattern_hw`. Batch dimension is
+                allowed. The tensor device determines the optics execution
+                device for this forward call.
+            amplitude: Optional real-valued amplitude tensor with the same
+                shape as `phi_lr`. Stage 3 defaults to `None`, which means the
+                phase-only mainline uses amplitude 1.
+            return_intermediates: Whether to include propagation-stage tensors
+                for debugging and validation.
+
+        Returns:
+            A mapping containing at least:
+            - `U0`
+            - `U_out_full`
+            - `I_out_full`
+            - `I_out_roi`
+
+        Contract notes:
+            - This is the stable Stage 3 entrypoint for any phase-domain input,
+              including future encoder output.
+            - The caller/provider is responsible for supplying a real phase
+              tensor with correct batch/channel/spatial layout.
+            - The decoder is responsible for converting that phase tensor into
+              a coherent field before propagation.
+        """
         U0 = self.build_input_field(phi_lr, amplitude=amplitude)
         output = self.forward_from_field(U0, return_intermediates=return_intermediates)
         output["U0"] = U0
         return output
+
+    def forward_from_phase_provider(
+        self,
+        phase_provider: PhaseProvider,
+        upstream_input: torch.Tensor,
+        *,
+        amplitude: torch.Tensor | None = None,
+        return_intermediates: bool = False,
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
+        """Resolve phase through a provider, then delegate to `forward_from_phase`.
+
+        This is a Stage 3/Stage 4 boundary hook, not an encoder implementation.
+        It exists so future learned encoders only need to satisfy the
+        `PhaseProvider` contract and can stay outside the optical core.
+
+        Args:
+            phase_provider: Callable that receives `upstream_input` and returns
+                a real phase tensor shaped `[B, 1, H, W]`.
+            upstream_input: Arbitrary upstream tensor owned by the caller. In
+                Stage 3 this may simply already be `phi_lr`; in future Stage 4
+                it may be an encoder input tensor.
+            amplitude: Optional amplitude tensor forwarded to
+                `forward_from_phase(...)`.
+            return_intermediates: Forwarded to `forward_from_phase(...)`.
+        """
+        if not callable(phase_provider):
+            raise TypeError("phase_provider must be callable.")
+
+        phi_lr = phase_provider(upstream_input)
+        if not isinstance(phi_lr, torch.Tensor):
+            raise TypeError(
+                "phase_provider must return a torch.Tensor phase representation."
+            )
+
+        return self.forward_from_phase(
+            phi_lr,
+            amplitude=amplitude,
+            return_intermediates=return_intermediates,
+        )
 
     def forward(
         self,
