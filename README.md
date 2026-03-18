@@ -26,6 +26,8 @@ More orders are listed in docs/run_order.md. Here are some frequently used comma
   `python scripts/check_stage5_optics_configs.py --config configs/stage5/stage5_optics_paper_aligned.yaml`
 - Validate Stage 5 paper-aligned encoder + decoder integration:
   `python scripts/check_stage5_encoder_integration.py --config configs/stage5/stage5_paper_encoder.yaml`
+- Validate Stage 5 paper-aligned SR loss:
+  `python scripts/check_stage5_sr_loss.py --config configs/stage5/stage5_sr_loss.yaml`
 - Preview the Stage 5 Issue 5.2 EMNIST 96x96 display dataset:
   `python scripts/preview_stage5_emnist_display.py --config docs/plan/stage_plan/stage5/stage5_emnist_display_config.yaml`
 
