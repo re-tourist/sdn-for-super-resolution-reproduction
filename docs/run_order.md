@@ -95,6 +95,121 @@ python scripts/train_electronic_baseline.py \
 If data has already been downloaded, you can change `--download` to `--no-download` and
 optionally add `--dataset-root <your_emnist_root>`.
 
+### 4) Stage 4 minimal closed-loop: formal single-sample acceptance
+
+Issue 4.6 is an execution/reporting task, not a new trainer design task. Use the existing
+`scripts/train_stage4_minimal.py` as-is and run the formal single-sample overfit acceptance
+experiment on the Linux server. Start with 100 steps. Only extend to a stronger run if the
+100-step result is still ambiguous.
+
+Recommended first acceptance run:
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --single-sample \
+  --steps 100 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --download \
+  --run-name issue4_6_single_sample_100
+```
+
+If the 100-step result is still borderline but numerically stable, extend to 300 steps:
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --single-sample \
+  --steps 300 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --run-name issue4_6_single_sample_300
+```
+
+After the run finishes, collect at least these files from the output directory:
+
+- `config_snapshot.json`
+- `history.json`
+- `run_summary.json`
+- `loss_curve.png`
+- `preview_step0.png`
+- `preview_best.png`
+- `preview_final.png`
+- `phi_preview_step0.png`
+- `phi_preview_best.png`
+- `phi_preview_final.png`
+- `grad_stats.json`
+- `checkpoints/checkpoint_best.pt`
+- `checkpoints/checkpoint_latest.pt`
+
+Expected output roots:
+
+- `outputs/stage4/minimal_trainer/issue4_6_single_sample_100/`
+- `outputs/stage4/minimal_trainer/issue4_6_single_sample_300/`
+
+### 5) Stage 4 minimal closed-loop: formal small-subset acceptance
+
+Issue 4.7 starts only after Issue 4.6 has already passed. Reuse the same
+`scripts/train_stage4_minimal.py` stack and do not redesign the trainer,
+optics, dataset path, or wrapper. The goal is to check whether the learnability
+seen in single-sample overfit extends to a small real subset without obvious
+collapse.
+
+Recommended first acceptance run:
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --subset-size 16 \
+  --batch-size 4 \
+  --steps 200 \
+  --preview-limit 4 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --download \
+  --run-name issue4_7_small_subset_16_s200
+```
+
+If the 200-step result is still ambiguous but numerically stable, extend to 400
+steps with the same subset size:
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --subset-size 16 \
+  --batch-size 4 \
+  --steps 400 \
+  --preview-limit 4 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --run-name issue4_7_small_subset_16_s400
+```
+
+After the run finishes, collect at least these files from the output directory:
+
+- `config_snapshot.json`
+- `history.json`
+- `run_summary.json`
+- `loss_curve.png`
+- `preview_step0.png`
+- `preview_best.png`
+- `preview_final.png`
+- `phi_preview_step0.png`
+- `phi_preview_best.png`
+- `phi_preview_final.png`
+- `grad_stats.json`
+- `checkpoints/checkpoint_best.pt`
+- `checkpoints/checkpoint_latest.pt`
+
+For Issue 4.7 specifically, the previews must be kept because they are the main
+evidence for:
+
+- multiple different inputs
+- corresponding different outputs
+- whether there is obvious collapse to one generic pattern
+
+Expected output roots:
+
+- `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s200/`
+- `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s400/`
+
 ## Notes
 
 - `scripts/train_electronic_baseline.py` now treats explicit CLI arguments as higher priority
