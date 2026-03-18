@@ -1,0 +1,25 @@
+loss:
+  stage5_sr:
+    note: >
+      Stage 5 finalizes sigma as per-sample normalization over all non-batch
+      ROI elements, with batch aggregation applied after per-sample normalized
+      MAE. gamma_by_depth keeps L=5 at 0.0 as the Stage 5 default policy,
+      not as paper-unique truth.
+    epsilon: 1.0e-8
+    sigma_mode: per_sample
+    aggregation: batch_mean_after_per_sample_mae
+    efficiency_term:
+      enabled: true
+      eta_scale: 100.0
+      output_power_source: prediction_roi_sum
+      input_power_source: explicit_input_power
+      gamma_by_depth:
+        "1": 0.005
+        "3": 0.015
+        "5": 0.0
+    sanity:
+      output_root: outputs/stage5/loss_sanity
+      depths: [1, 3, 5]
+      batch_size: 2
+      roi_hw: [96, 96]
+      seed: 55
