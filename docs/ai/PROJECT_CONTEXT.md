@@ -9,7 +9,7 @@ Optical Neural Network Super-Resolution Reproduction
 Reproduce the paper *Super-resolution image display using diffractive decoders* with a traceable engineering workflow.
 
 **Current Stage:**  
-The project is entering **Stage 4: minimal closed-loop training**.
+Stage 4 learnability gate has **passed**. The project is now ready to enter **Stage 5: paper-alignment** (GO decision pending implementation).
 
 **Important Stage-4 Principle:**  
 The goal is **not** to chase the paper's final metric yet.  
@@ -34,12 +34,16 @@ The goal is to answer one question:
 - Stage 3 optical forward sanity checks
 - Stage 3 decoder-only single-sample fitting
 - Stage 3 decoder-only small-subset capacity checks
+- Stage 4 minimal encoder + hybrid wrapper + dataset path
+- Stage 4 minimal trainer with artifact saving
+- Stage 4 single-sample closed-loop acceptance: PASS
+- Stage 4 small-subset closed-loop acceptance: PASS (with caveats)
 
 ### Current focus
 
-- build the first **encoder + optical decoder** minimal closed loop
-- keep the setup small, debuggable, and explicitly non-paper-final
-- verify learnability before any Stage 5 paper-alignment work
+- consolidate Stage 4 evidence and documentation
+- make a clear Stage 5 GO decision
+- prepare for Stage 5 paper-alignment work without over-claiming quality
 
 ---
 
@@ -106,10 +110,8 @@ They are useful for optical learnability verification, but they are **not yet** 
 
 The repo does **not yet** have:
 
-- a real Stage 4 general trainer
-- a real Stage 4 eval runner
-- Stage 4 optics configs
-- a clean dataset module under `src/datasets/`
+- a general Stage 4 eval runner
+- Stage 5 paper-aligned configs
 - a `tests/` directory for systematic automated checks
 
 At the time of this update:
@@ -118,7 +120,8 @@ At the time of this update:
 - `scripts/eval.py` is empty
 - `scripts/visualize.py` is empty
 
-So any Stage 4 plan must honestly treat these as pending work.
+Stage 4 has a **minimal** trainer + dataset path for acceptance runs, but it is not
+a full general training/eval framework.
 
 ---
 
@@ -165,23 +168,14 @@ This ordering exists because some older background/context docs may lag behind t
 
 ---
 
-## 7. Immediate Stage-4 Engineering Gaps
+## 7. Immediate Stage-5 Engineering Gaps
 
-The most likely Stage 4 work items are:
+The most likely Stage 5 work items are:
 
-1. define the minimal encoder output contract
-2. connect encoder output to `phi_lr`
-3. decide the first Stage 4 training scale
-   - stay toy first
-   - or move partially toward the paper setup
-4. build a real Stage 4 trainer script
-5. build Stage 4 config files
-6. define artifact saving rules
-7. define Stage 4 acceptance checks
-   - loss decreases
-   - single-sample overfit works
-   - gradients reach encoder and optics
-   - intermediate outputs are interpretable
+1. align optics/encoder configs with paper settings
+2. scale data protocol beyond minimal EMNIST setup
+3. define Stage 5 training schedule and evaluation pipeline
+4. keep Stage 4 artifacts as traceable baseline for regressions
 
 ---
 

@@ -4,12 +4,12 @@
 
 ## å½“å‰é˜¶æ®µ
 
-- Stage 3: Optical Module Verification
+- Stage 4: Minimal Closed-Loop Learnability (**PASS**)
 - å½“å‰å®šä½ï¼š
-  - éªŒè¯ paper-aligned optical decoder skeleton æ˜¯å¦å¯è¿è¡Œã€å¯æ£€æŸ¥ã€å¯åšæœ€å°å®¹é‡éªŒè¯
-  - ä¸æ˜¯æœ€ç»ˆ end-to-end SR system
-  - ä¸æ˜¯ final joint training
-  - ä¸æ˜¯ final paper full-setting reproduction
+  - å·²å®Œæˆ Stage 4 å•æ ·æœ¬ overfit éªŒæ”¶ï¼ˆPASSï¼‰
+  - å·²å®Œæˆ Stage 4 å°å­é›†éªŒæ”¶ï¼ˆPASSï¼Œå¸¦ä¿ç•™é¡¹ï¼‰
+  - ä¸‹ä¸€é˜¶æ®µä¸º Stage 5 paper-aligned setting alignmentï¼ˆGOï¼‰
+  - ä¸ä»£è¡¨è®ºæ–‡æŒ‡æ ‡å·²è¾¾æˆ
 
 ## å½“å‰å·²éªŒè¯çš„äº‹å®
 
@@ -124,3 +124,30 @@ shared protocolï¼š
 
 - Stage 4 æ‰è¿›å…¥ encoder æ¥å…¥ä¸æœ€å°é—­ç¯è®­ç»ƒã€‚
 - Stage 5/6 æ‰è¿›å…¥ paper-final setting alignmentã€æ›´å¤šæ•°æ®åè®®å’Œç³»ç»ŸåŒ–å®éªŒã€‚
+
+---
+
+## Stage 4 Closed-Loop Learnability Summary
+
+### ÒÑ½¨Á¢µÄÊÂÊµ
+
+- µ¥Ñù±¾±Õ»· loss Ã÷È·ÏÂ½µ£¬encoder Óë optics Ìİ¶È¿É¹Û²â£¬ÎŞ NaN/Inf
+- Ğ¡×Ó¼¯±Õ»· loss ÈÔÄÜÏÂ½µ£¬Êä³ö¶ÔÊäÈëÓĞÏìÓ¦£¬ÎŞÃ÷ÏÔ collapse
+- Stage 4 learnability gate ³ÉÁ¢£¨PASS£©
+
+### ÉĞÎ´½¨Á¢µÄÊÂÊµ
+
+- ÂÛÎÄ¼¶¶Á³öÖÊÁ¿ÓëÖ¸±ê£¨PSNR/SSIM ÈÔÆ«µÍ£©
+- paper-final setting alignment
+- ´ó¹æÄ£ÑµÁ·»òÏµÍ³»¯ÏûÈÚ
+
+### Ö÷Òª±£ÁôÏî
+
+- Ğ¡×Ó¼¯¶Á³öÈÔÆ«Ä£ºı¡¢blob-like
+- normalized MAE ÏÂ loss Æ½Ì¨Öµ½Ï¸ß
+- ¿ÉÄÜÔ­Òò°üÀ¨×îĞ¡ encoder ÈİÁ¿¡¢toy optics grid¡¢Ä¿±ê¹éÒ»»¯·½Ê½µÈ£¨Ğè Stage 5 ½øÒ»²½ÑéÖ¤£©
+
+### Stage 5 ¾ö²ß
+
+- ½áÂÛ£º**GO**
+- ÀíÓÉ£ºStage 4 learnability gate ÒÑÍ¨¹ı£¬µ«¶Á³öÖÊÁ¿Î´´ïÂÛÎÄÉè¶¨£¬Stage 5 ¶ÔÆëÈÔÊÇ±ØÒª²½Öè
