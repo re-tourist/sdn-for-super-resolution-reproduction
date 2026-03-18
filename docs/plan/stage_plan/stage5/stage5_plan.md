@@ -24,6 +24,11 @@ Stage 5 的任务不是做系统化消融，而是把论文主设定（数据、
 6. `docs/execution/results_summary.md`
 7. `docs/execution/experiment_log.md`
 
+范围冲突处理规则：
+
+- 当 `docs/paper/paper_notes.md` 记录的是更宽的复现总范围，而本文件记录的是当前阶段排期时，以本文件为准。
+- 特别是 quantization、misalignment、systematic ablations 虽属于总复现范围，但当前明确后置到 Stage 6。
+
 ---
 
 # 2. Stage 5 核心目标
@@ -60,13 +65,8 @@ Stage 5 的任务不是做系统化消融，而是把论文主设定（数据、
 
 当前仓库已存在：
 
+- `docs/execution/stage4_single_sample_report.md`（已通过）
 - `docs/execution/stage4_small_subset_report.md`（已通过）
-
-仍需确认：
-
-- 是否已有单样本闭环报告（建议路径：`docs/execution/stage4_single_sample_report.md`）
-
-若单样本证据缺失，应先补齐再进入 Stage 5。
 
 ---
 
@@ -148,6 +148,11 @@ Stage 5 的任务不是做系统化消融，而是把论文主设定（数据、
 - γ = 0.015 for L=3
 - 其它情况 γ = 0（需明确是否对 L=5 也为 0）
 
+Stage 5 的实现要求：
+
+- loss 必须支持 configurable gamma，而不是把 L=5 gamma 静态拍死在代码里
+- 若实现阶段暂未拍板 L=5 gamma，则必须把默认值与理由写入 config / summary / protocol freeze
+
 ## 6.5 训练设定
 
 - optimizer：Adam
@@ -173,13 +178,15 @@ Stage 5 的任务不是做系统化消融，而是把论文主设定（数据、
 
 # 7. 待确认与假设清单（Stage 5 必须显式记录）
 
-1. `phi_lr` 的精确尺寸是否固定为 32×32（默认假设为 96/3）。
-2. 96×96 display 的具体 tile 规则（布局、放置策略、随机性、空位处理）。
-3. distance schedule 与代码中 `input_to_first / inter_layer / last_to_sensor` 的映射关系。
-4. efficiency penalty 是否对 L=5 也为 0。
-5. phase mapping 使用 `[0, 2π)` 还是 `[-π, π]`（以及初始分布）。
-6. σ 的归一化在 batch 维的 exact 计算方式（逐样本还是逐 batch）。
-7. output FOV 与 full-grid 的 crop 对齐是否有额外 margin / padding 处理。
+| 未决项 | 当前默认处理 | 主要拍板 issue | 当前不允许发生的事 |
+| --- | --- | --- | --- |
+| `phi_lr` 的精确尺寸是否固定为 32×32 | 默认假设 `96 / 3 = 32`，但不得伪装成论文唯一明示 | Issue 5.1, 5.4 | 在 encoder 实现里把 `32×32` 写成“论文已明确唯一正确值” |
+| 96×96 display 的 tile 规则 | 需要显式写进 dataset config 与预览 | Issue 5.1, 5.2 | 在 dataset 代码里隐式写死随机布局而不记录 |
+| distance schedule 与 `input_to_first / inter_layer / last_to_sensor` 的映射 | 必须显式写进 optics config 与协议文档 | Issue 5.1, 5.3 | 在 optics 实现中靠隐式位置约定或 layer-index special case 拍板 |
+| efficiency penalty 是否对 L=5 也为 0 | 必须做成 configurable default，并在文档中记录 | Issue 5.1, 5.5 | 在 loss 代码里静态宣布 L=5 gamma 已被论文唯一确定 |
+| phase mapping 使用 `[0, 2π)` 还是 `[-π, π]` | 允许实现 configurable mapping | Issue 5.1, 5.4 | 把某个 mapping 写成论文唯一明确事实 |
+| σ 的归一化按逐样本还是逐 batch | 必须在 loss 实现与 protocol freeze 中明确 | Issue 5.1, 5.5 | 在训练代码里默认拍板且不记录 |
+| output FOV / full-grid crop 对齐是否有额外 margin | 必须在 eval / config 中显式记录 | Issue 5.1, 5.3, 5.7 | 在 eval 里悄悄改 crop 口径 |
 
 这些条目必须被写入 Stage 5 protocol freeze 文档，不能隐性处理。
 
@@ -193,25 +200,38 @@ Stage 5 的任务不是做系统化消融，而是把论文主设定（数据、
 - **Stage 5D — Encoder 对齐**：实现 paper-aligned phase-only encoder。
 - **Stage 5E — 损失函数对齐**：normalized MAE + efficiency penalty 可配置化。
 - **Stage 5F — 训练骨架对齐**：Stage 5 trainer + configs，支持长训与 resume。
-- **Stage 5G — 评估协议对齐**：PSNR/SSIM + bicubic baseline + line-pair test。
-- **Stage 5H — paper-aligned smoke**：短跑验证 pipeline 稳定。
-- **Stage 5I — paper-aligned main run**：主线训练与评估结果记录。
-- **Stage 5J — 文档收口**：更新执行日志、结果摘要，给出 Stage 6 入口结论。
+- **Stage 5G — 常规评估协议对齐**：PSNR/SSIM + bicubic baseline。
+- **Stage 5H — blind line-pair 协议对齐**：line-pair / resolution target 生成与评估挂接。
+- **Stage 5I — paper-aligned smoke**：短跑验证 pipeline 稳定。
+- **Stage 5J — paper-aligned main run**：主线训练与评估结果记录。
+- **Stage 5K — 文档收口**：更新执行日志、结果摘要，给出 Stage 6 入口结论。
 
 ---
 
 # 9. Stage 5 验收标准
 
-Stage 5 至少需要满足以下可验证标准：
+## 9.1 最小工程完成标准
 
 1. 96×96 display 数据集可稳定生成，预览样本可解释。
 2. paper-aligned optics config 能在 L=1/3/5 下 forward 成功且 shape 正确。
 3. paper-aligned loss / efficiency term 可开关，并在 config 中可追溯。
 4. paper-aligned trainer 可完成 smoke 训练且无 NaN/Inf。
-5. 至少完成一次 paper-aligned 主线训练（建议 L=5 phase-only）。
-6. PSNR/SSIM 与 bicubic baseline 结果可复盘、可对比。
-7. blind line-pair 测试可生成并在 eval 中复用。
+5. 常规 eval runner 可输出 PSNR / SSIM，并可复用 bicubic baseline。
+6. blind line-pair 测试可独立生成并挂接到 eval 路径。
+7. main-run config、启动命令和工件协议已定义清楚，可作为 launch-ready recipe 使用。
 8. 所有关键假设已在 protocol freeze 与 summary 中明确记录。
+
+## 9.2 更强的复现完成标准（资源允许时）
+
+1. 至少完成一次 paper-aligned 主线训练（建议 L=5 phase-only）。
+2. main run 的 val/test 结果可以与 bicubic baseline 和 blind line-pair 测试一起复盘。
+3. main run 中所有资源相关妥协都被显式记录，而不是隐含在代码里。
+
+## 9.3 对 Prompt 的含义
+
+- 后续给 Codex 的 implementation prompt 应优先对齐 `9.1 最小工程完成标准`。
+- `9.2` 属于更强证据目标，不能反向逼迫前置 issue 提前扩张成“大而全框架”。
+- 若主线训练受算力或时间预算限制，报告必须把“代码/配置已就绪”和“长训尚未跑完”明确分开记录。
 
 ---
 
@@ -241,4 +261,14 @@ Stage 5 至少需要满足以下可验证标准：
 
 # 12. Stage 6 入口条件（简述）
 
-只有当 Stage 5 完成 **paper-aligned pipeline + 至少一次主线训练**，并明确记录所有假设后，才进入 Stage 6 的系统化消融与扩展实验。
+进入 Stage 6 前，至少需要满足：
+
+1. `9.1 最小工程完成标准` 已全部满足。
+2. 已有至少一次 paper-aligned 主线训练被实际启动并形成可复盘记录。
+3. 若主线训练尚未达到理想预算，也必须把资源限制、当前结果和阻塞点写清楚。
+
+换句话说，Stage 6 的前提不是“Stage 5 所有长训都已经完美跑满”，而是：
+
+- paper-aligned pipeline 已落地
+- 主线运行路径已被真实执行过
+- 后续系统化实验有可信起点可继承

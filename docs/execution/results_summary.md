@@ -1,153 +1,149 @@
 # Results Summary
 
-汇总当前 Stage 3 已经获得的事实性结果，并明确哪些结论已经可以说、哪些还不能说。
+本文档汇总当前仓库已经获得的事实性结果，用于回答两个问题：
 
-## 当前阶段
+1. 现在已经被验证的工程结论是什么。
+2. 现在还不能声称已经完成了什么。
 
-- Stage 4: Minimal Closed-Loop Learnability (**PASS**)
-- 当前定位：
-  - 已完成 Stage 4 单样本 overfit 验收（PASS）
-  - 已完成 Stage 4 小子集验收（PASS，带保留项）
-  - 下一阶段为 Stage 5 paper-aligned setting alignment（GO）
-  - 不代表论文指标已达成
-
-## 当前已验证的事实
-
-### 1. Stage 3 optical contract 已落地
-
-- 当前主链路已经稳定到：
-  - `phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`
-- full-grid forward 与 ROI supervision 已显式分离
-- `U_out_full`、`I_out_full`、`I_out_roi` 都由 optical module 直接返回
-
-### 2. Readout / Crop 最小验证通过
-
-来源：
-- `scripts/check_optical_readout.py`
-
-当前重跑结果：
-- `U_out_full` 为 complex tensor
-- `I_out_full` 和 `I_out_roi` 为 real 且 nonnegative
-- `output_crop_hw=(20, 20)` 时 ROI shape 为 `(1, 1, 20, 20)`
-- `output_crop_hw=(12, 12)` 时 ROI shape 为 `(1, 1, 12, 12)`
-- oversized crop 会报显式错误
-- 改变输入 phase 会改变输出：
-  - `full_delta = 1.748107e-03`
-  - `roi_delta = 2.850121e-03`
-
-### 3. Forward sanity 已覆盖 L=1/3/5
-
-来源：
-- `scripts/check_optical_forward_depths.py`
-
-当前重跑结果：
-- `L=1/3/5` 都能 forward 成功
-- 三个 depth 的输出接口一致：
-  - `U0`
-  - `U_out_full`
-  - `I_out_full`
-  - `I_out_roi`
-- `U_out_full` 持续保持 complex
-- `I_out_full` 与 `I_out_roi` 持续保持 real 且 nonnegative
-- 错误的 `inter_layer` 长度会被显式拒绝
-
-### 4. Decoder-only single-sample fitting 已显示明确下降
-
-来源：
-- `outputs/optics/decoder_only_single_sample_smoke/summary.json`
-
-当前 `L=3` smoke 结果：
-
-| depth | steps | initial_loss | best_loss | final_loss | loss_decrease |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 3 | 120 | 0.1463065892457962 | 0.03812457248568535 | 0.03893868252635002 | 0.10818201676011086 |
-
-补充观察：
-- `roi_change_mean_abs = 0.4759185314178467`
-- `best_roi_std = 0.34699586033821106`
-
-这说明在不引入 encoder 的条件下，当前 optical decoder stack 至少能对一个目标做出可观下降。
-
-### 5. Fixed-protocol small-subset depth sweep 已覆盖 L=1/3/5
-
-来源：
-- `outputs/optics/decoder_only_small_subset_sweep_run1/sweep_summary.json`
-- `outputs/optics/decoder_only_small_subset_sweep_run1/depth_comparison.csv`
-
-shared protocol：
-- `subset_size = 4`
-- `steps = 80`
-- `seed = 42`
-- `device = cpu`
-- `lr_phase = 0.15`
-- `lr_decoder = 0.03`
-- `freeze_decoder = false`
-- `loss = normalized_mae_roi`
-
-结果摘要：
-
-| depth | success_count | total_count | success_rate | mean_initial_loss | mean_best_loss | mean_loss_decrease |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 4 | 4 | 1.0 | 0.12581018544733524 | 0.02864284673705697 | 0.09716733871027827 |
-| 3 | 4 | 4 | 1.0 | 0.13204407505691051 | 0.03225723281502724 | 0.09978684224188328 |
-| 5 | 4 | 4 | 1.0 | 0.1348664928227663 | 0.03135538613423705 | 0.10351110668852925 |
-
-最小事实结论：
-- 三种 depth 在同一 tiny protocol 下都能在多个样本上下降
-- Issue 6 需要的 fixed-protocol `L=1/3/5` 容量 sweep 已补齐
-
-## 当前可以说的结论
-
-- 当前 Stage 3 optical decoder skeleton 是可运行的，且 optical/readout/crop contract 已稳定。
-- 在当前 tiny synthetic protocol 下，`L=1/3/5` 三种 depth 都表现出可优化的 decoder-only capacity。
-- 当前结果已经足以支撑：
-  - 进入未来 Stage 4 时不必重新设计 optical core
-  - future encoder 只需要对接 phase-provider / `forward_from_phase(...)` contract
-
-## 当前不能说的结论
-
-- 不能说论文性能已经复现。
-- 不能说 `L=5` 或任何更深 depth 已经被严格证明更优。
-- 不能说当前 tiny synthetic subset 结果可直接外推到真实数据集或自然图像。
-- 不能说当前 optical module 已经完成 final paper-setting alignment。
-- 不能说 Stage 4 end-to-end training 已经就绪到可以跳过进一步调试。
-
-## 已知限制与风险
-
-- 当前验证协议使用的是 Stage 3 工程化 tiny setting，不是 final paper full-setting。
-- 当前子集目标是 deterministic synthetic ROI targets，主要用于 capacity sanity，不是正式 benchmark。
-- 当前 sweep 在 CPU 上完成，默认使用 float32 计算与较小 grid。
-- propagation primitive 来自 upstream optics 思路的重写版本，当前已做 forward / fitting sanity，但尚未扩展到硬件鲁棒性或更严格物理对照。
-- current depth comparison 只说明“在相同预算下都能下降”，不说明更深层必然更好。
-
-## 后续阶段边界
-
-- Stage 4 才进入 encoder 接入与最小闭环训练。
-- Stage 5/6 才进入 paper-final setting alignment、更多数据协议和系统化实验。
+本文档是结果摘要，不是实现说明书，也不是后续阶段计划文档。
 
 ---
 
-## Stage 4 Closed-Loop Learnability Summary
+## 当前阶段
 
-### �ѽ�������ʵ
+- 当前可信阶段结论：`Stage 4 minimal closed-loop learnability = PASS`
+- 当前工程状态：
+  - Stage 3 optical module verification 已完成
+  - Stage 4 单样本 closed-loop 验收已完成
+  - Stage 4 小子集 closed-loop 验收已完成（带保留项）
+  - Stage 5 paper-aligned planning 已起草，但 paper-aligned implementation 尚未开始
 
-- �������ջ� loss ��ȷ�½���encoder �� optics �ݶȿɹ۲⣬�� NaN/Inf
-- С�Ӽ��ջ� loss �����½����������������Ӧ�������� collapse
-- Stage 4 learnability gate ������PASS��
+---
 
-### ��δ��������ʵ
+## 当前已验证的事实
 
-- ���ļ�����������ָ�꣨PSNR/SSIM ��ƫ�ͣ�
-- paper-final setting alignment
-- ���ģѵ����ϵͳ������
+### 1. Stage 3 optical contract 已冻结并落地
 
-### ��Ҫ������
+- 当前主链路稳定为：
+  - `phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`
+- full-grid forward 与 ROI supervision 已显式分离
+- `U_out_full`、`I_out_full`、`I_out_roi` 由 optical module 直接返回
 
-- С�Ӽ�������ƫģ����blob-like
-- normalized MAE �� loss ƽֵ̨�ϸ�
-- ����ԭ�������С encoder ������toy optics grid��Ŀ���һ����ʽ�ȣ��� Stage 5 ��һ����֤��
+### 2. Readout / crop / forward sanity 已通过
 
-### Stage 5 ����
+来源：
 
-- ���ۣ�**GO**
-- ���ɣ�Stage 4 learnability gate ��ͨ��������������δ�������趨��Stage 5 �������Ǳ�Ҫ����
+- `scripts/check_optical_readout.py`
+- `scripts/check_optical_forward_depths.py`
+
+最小事实：
+
+- `I_out_full` / `I_out_roi` 保持 real 且 nonnegative
+- `U_out_full` 保持 complex
+- `output_crop_hw` 越界会显式报错
+- `L=1/3/5` 在当前 Stage 3 tiny setting 下都可 forward
+
+### 3. Decoder-only optical capacity 已通过最小验证
+
+来源：
+
+- `outputs/optics/decoder_only_single_sample_smoke/summary.json`
+- `outputs/optics/decoder_only_small_subset_sweep_run1/sweep_summary.json`
+
+最小事实：
+
+- decoder-only 单样本拟合中，loss 可明确下降
+- decoder-only 小子集 fixed-protocol sweep 中，`L=1/3/5` 都能在多个样本上下降
+- 这些结果说明 optical decoder stack 具备可优化容量
+- 这些结果不等价于 paper-aligned end-to-end 性能已经成立
+
+### 4. Stage 4 单样本 closed-loop 验收已通过
+
+来源：
+
+- `docs/execution/stage4_single_sample_report.md`
+- `outputs/stage4/minimal_trainer/issue4_6_single_sample_100/run_summary.json`
+- `outputs/stage4/minimal_trainer/issue4_6_single_sample_300/run_summary.json`
+
+结果摘要：
+
+| run | steps | initial_loss | best_loss | final_loss | encoder grad | optics grad | NaN/Inf |
+| --- | ---: | ---: | ---: | ---: | --- | --- | --- |
+| `issue4_6_single_sample_100` | 100 | 0.213564 | 0.164205 | 0.164152 | observed | observed | none |
+| `issue4_6_single_sample_300` | 300 | 0.213564 | 0.117267 | 0.116939 | observed | observed | none |
+
+最小事实：
+
+- loss 明确下降
+- encoder / optics 梯度全程可观测
+- 无 NaN / Inf
+- 预测 ROI 从初始扩散亮斑演化到与 target 更接近的结构
+
+### 5. Stage 4 小子集 closed-loop 验收已通过
+
+来源：
+
+- `docs/execution/stage4_small_subset_report.md`
+- `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s200/run_summary.json`
+- `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s400/run_summary.json`
+
+结果摘要：
+
+| run | steps | initial_loss | best_loss | final_loss | val_loss | encoder grad | optics grad | verdict |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| `issue4_7_small_subset_16_s200` | 200 | 0.217708 | 0.149736 | 0.180445 | 0.192186 | observed | observed | PASS |
+| `issue4_7_small_subset_16_s400` | 400 | 0.217708 | 0.144116 | 0.171176 | 0.190612 | observed | observed | PASS |
+
+最小事实：
+
+- 小子集上 train loss 明确下降
+- val loss 从初始状态下降后进入平台
+- 输出对输入仍有响应，没有明显 collapse 到单一模式
+- 无 NaN / Inf
+
+---
+
+## 当前可以说的结论
+
+- 当前仓库已经通过 Stage 4 learnability gate。
+- 现有 optical core 不需要在 Stage 5 之前重写。
+- Stage 5 应把重点放在 paper-aligned dataset / optics config / encoder / loss / eval，而不是重新证明“系统能不能学”。
+- Stage 4 的单样本和小子集工件应被保留为后续 Stage 5 回归基线。
+
+---
+
+## 当前不能说的结论
+
+- 不能说论文指标已经复现。
+- 不能说 paper-aligned pipeline 已经落地。
+- 不能说 `L=5` 或任何更深 depth 已被严格证明更优。
+- 不能说当前 Stage 4 结果可直接外推为 paper-final 质量。
+- 不能说 blind line-pair、量化、鲁棒性或系统化消融已经完成。
+
+---
+
+## 已知限制与风险
+
+- 当前 Stage 4 使用的是最小闭环协议，不是 paper-final setting。
+- 当前 raw 读出质量仍偏模糊，PSNR / SSIM 偏低。
+- Stage 4 的主损失是 normalized MAE；其优化目标与 raw 强度可视化 / PSNR / SSIM 不完全同向。
+- 400x400 propagation grid、paper dataset protocol、efficiency penalty 和 line-pair eval 尚未进入正式实现。
+
+---
+
+## 对 Stage 5 的含义
+
+- 结论：`GO`
+- 解释：
+  - Stage 4 已经回答“encoder + optics 是否可学”
+  - Stage 5 的任务不再是 learnability gate，而是把系统对齐到论文设定
+  - Stage 5 仍需对未决项保持诚实记录，不能把假设伪装成论文已明确
+
+---
+
+## 相关文档
+
+- `docs/execution/stage4_single_sample_report.md`
+- `docs/execution/stage4_small_subset_report.md`
+- `docs/plan/stage_plan/stage5/stage5_plan.md`
+- `docs/plan/stage_plan/stage5/stage5_issue_plan.md`
