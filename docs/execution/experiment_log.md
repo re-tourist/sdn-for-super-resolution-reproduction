@@ -1,94 +1,196 @@
 # Experiment Log
 
-记录阶段推进中的关键实验、排查和结论，保证后续能够追溯“改了什么、为什么改、结果如何”。
+本文档按时间顺序记录当前仓库中已经实现并运行过的关键里程碑。
 
-## Exp-000
-- 日期: 2026-03-14
-- 阶段: Stage 1 / Stage 2
-- 类型: 排错 / 基线修复
-- 目标: 解释电子 baseline 在服务器上出现的异常现象，包括参数不生效、训练速度异常、`Recon` 全黑、单样本 overfit 失败
-- 配置:
-  - 旧版电子 baseline 训练脚本
-  - `outputs/electronic_baseline/fit_one_sample`
-  - `outputs/electronic_baseline/smallset_e10`
-- 代码版本 / 分支: 当前工作区
-- 修改内容:
-  - 修复 `scripts/train_electronic_baseline.py` 中 `CLI > config` 优先级错误
-  - 把 HR resize 从训练循环前移到 dataset transform
-  - 将 preview 图改为固定多样本网格，避免“每轮都像同一张图”
-  - 为真正的单样本拟合增加 `--overfit-single-sample`
-- 结果:
-  - 旧报告确认存在配置覆盖问题，命令行中的 `epochs=10, batch_size=32, lr=1e-3` 被 `configs/base.yaml` 覆盖成 `50, 8, 1e-4`
-  - 修复后，`summary.json` 能正确记录实际生效参数
-- 观察:
-  - 参数覆盖问题会直接污染实验结论，必须先修，否则无法判断模型本身是否有问题
-- 结论:
-  - 第一轮异常包含脚本实现问题，不能直接把旧 baseline 结果当成模型真实性能
-- 下一步:
-  - 在参数优先级修复后，继续检查模型是否仍存在训练动力学问题
+记录范围：
 
-## Exp-001
-- 日期: 2026-03-14
-- 阶段: Stage 1 / Stage 2
-- 类型: 诊断实验 / 模型修复
-- 目标: 找到电子 baseline `Recon` 全黑的根因，并验证模型是否能通过单样本 overfit sanity check
-- 配置:
-  - 单样本 overfit
-  - `hr_size=96`
-  - `sr_factor=4`
-  - `latent_channels=1`
-  - `lr=1e-3`
-- 代码版本 / 分支: 当前工作区
-- 修改内容:
-  - 将 `src/models/electronic_baseline.py` 中的隐藏层激活从 `ReLU` 改为 `LeakyReLU(0.1)`
-  - 将输出映射从 `sigmoid` 改为 `atan(out) / pi + 0.5`
-- 结果:
-  - 旧模型在几十步内塌缩到全黑输出，梯度接近 0
-  - 新模型在本地单样本 overfit 40 epoch 下达到:
-    - `best_val_psnr = 22.51`
-    - `best_val_ssim = 0.8217`
-    - `final_val_l1 = 0.0333`
-- 观察:
-  - 旧问题不是“可视化保存错误”，而是真实的零输出塌缩
-  - 稀疏白字黑底任务中，`ReLU + sigmoid + L1` 组合容易在早期把输出压到全黑并进入饱和区
-- 结论:
-  - 电子 baseline 的致命问题来自输出路径的训练动力学，而非瓶颈语义或数据协议
-- 下一步:
-  - 在服务器上重新运行标准 overfit / smallset 命令，确认正式结果是否稳定
+- Stage 3 optical module verification
+- Stage 4 minimal closed-loop acceptance
 
-## Exp-002
-- 日期: 2026-03-14
-- 阶段: Stage 1 / Stage 2
-- 类型: 正式 baseline 结果确认
-- 目标: 判断修复后的电子 baseline 是否达到“可信、可通过”的基线标准
-- 配置:
-  - 单样本 overfit:
-    - `outputs/electronic_baseline/fit_one_sample`
-    - `epochs=200, batch_size=1, lr=1e-3, num_samples=1, overfit_single_sample=true`
-  - 小数据集训练:
-    - `outputs/electronic_baseline/smallset_e10`
-    - `epochs=10, batch_size=32, lr=1e-3, num_samples=2000, val_ratio=0.1`
-- 代码版本 / 分支: 当前工作区
-- 修改内容:
-  - 无新增代码改动，分析服务器返回的正式 JSON 报告
-- 结果:
-  - `fit_one_sample/metrics.json`
-    - `best_epoch = 194`
-    - `best_val_psnr = 32.4633`
-    - `best_val_ssim = 0.9624`
-    - `final_val_psnr = 30.4862`
-    - `final_val_ssim = 0.9619`
-  - `smallset_e10/metrics.json`
-    - `best_epoch = 10`
-    - `best_val_psnr = 33.6274`
-    - `best_val_ssim = 0.9780`
-    - `final_val_l1 = 0.01042`
-- 观察:
-  - 单样本 overfit 已明显成功，说明模型和训练动力学已恢复正常
-  - 小数据集训练 10 个 epoch 内持续提升，没有再出现“第 1 轮后完全停滞”
-  - `summary.json` 中记录的训练参数与命令行一致，说明参数覆盖问题已解决
-- 结论:
-  - 当前电子 baseline 已达到 Stage 1 / Stage 2 可接受状态，可以作为后续 optical model 的纯电子参考基线
-- 下一步:
-  - 将当前 baseline 结果写入结果总结和排错文档
-  - 后续如果继续扩展，可在相同 bottleneck 约束下做更系统的数据量和训练轮数对比
+不记录内容：
+
+- 尚未执行的 Stage 5 paper-aligned implementation
+- 计划文档中的未来任务
+- 仅存在于讨论中、没有运行证据的结论
+
+---
+
+## S3-02 Optical Propagation Core
+
+- 对应任务：Issue 2 `feat: extract paper-aligned propagation core from sdn_upstream`
+- 做了什么：
+  - 从 `external/sdn_upstream` 参考并重写 centered FFT / IFFT、Rayleigh-Sommerfeld transfer kernel、phase-mask modulation。
+  - 在 `src/models/optics/propagation.py`、`src/models/optics/phase_utils.py`、`src/models/optics/diffractive_decoder.py` 中落地为当前 repo 的 clean optics core。
+  - 去掉 classification head、electrical decoder 以及上游任务耦合逻辑。
+- 最小结论：
+  - optical core 已与 upstream 任务层解耦。
+  - `L` 的语义固定为 trainable diffractive phase masks 数量。
+  - distance schedule 已显式区分 `input_to_first / inter_layer / last_to_sensor`。
+
+## S3-03 Readout / Crop Contract
+
+- 对应任务：Issue 3 `feat: add output FOV crop and optical direct-readout contract`
+- 做了什么：
+  - 新增 `src/models/optics/readout.py`，把 `I_out_full = |U_out_full|^2` 和 deterministic center crop 从脚本中抽离。
+  - decoder 稳定返回 `U_out_full`、`I_out_full`、`I_out_roi`。
+  - `output_crop_hw` 成为显式配置，crop 越界会报错。
+- 运行证据：
+  - `scripts/check_optical_readout.py`
+- 最小结论：
+  - full-grid 与 ROI readout 的职责已稳定。
+  - crop contract 已进入模块层，不再隐藏在脚本里。
+
+## S3-04 Forward Sanity For L=1/3/5
+
+- 对应任务：Issue 4 `feat: add Stage 3 forward sanity scripts for L=1/3/5`
+- 做了什么：
+  - 新增 `scripts/check_optical_forward_depths.py`
+  - 在同一最小协议下检查 `L=1/3/5` 的 forward 行为
+- 运行证据：
+  - `scripts/check_optical_forward_depths.py`
+- 最小结论：
+  - `L=1/3/5` 都能成功 forward
+  - 输出接口一致，invalid distance schedule 会显式失败
+
+## S3-05 Decoder-Only Single-Sample Fitting
+
+- 对应任务：Issue 5 `feat: add decoder-only single-sample fitting runner`
+- 做了什么：
+  - 新增 `scripts/train_decoder_only_single_sample.py`
+  - 直接优化 learnable input phase，不引入 encoder
+  - 在 ROI 上使用 normalized MAE 拟合单个 synthetic target
+- 运行证据：
+  - `outputs/optics/decoder_only_single_sample_smoke/summary.json`
+- 最小结论：
+  - decoder-only 单样本路径可学
+  - 这只说明 optical decoder 有容量，不等价于 end-to-end 结果
+
+## S3-06 Decoder-Only Small-Subset Depth Sweep
+
+- 对应任务：Issue 6 `feat: run small-subset optical capacity experiment across L=1/3/5`
+- 做了什么：
+  - 新增 `scripts/train_decoder_only_small_subset.py`
+  - 新增 `scripts/train_decoder_only_small_subset_sweep.py`
+  - 对固定 deterministic subset 执行 `L=1/3/5` sweep
+- 运行证据：
+  - `outputs/optics/decoder_only_small_subset_sweep_run1/sweep_summary.json`
+  - `outputs/optics/decoder_only_small_subset_sweep_run1/depth_comparison.csv`
+- 最小结论：
+  - 三种 depth 在同一 tiny protocol 下都能下降
+  - 当前结果不构成 paper performance 排序结论
+
+## S3-07 Phase-Provider Hook
+
+- 对应任务：Task3-7 `feat: add clean phase-provider hook for future Stage 4 integration`
+- 做了什么：
+  - 新增 `src/models/optics/phase_provider.py`
+  - 明确 `PhaseProvider` contract：`upstream_input -> phase tensor`
+  - 在 decoder 中稳定 `forward_from_phase(...)`、`forward_from_field(...)`、`forward_from_phase_provider(...)`
+- 最小结论：
+  - future encoder 接入点已冻结
+  - Stage 4 不需要重新设计 optical core 接口
+
+---
+
+## S4-01 Single-Sample Closed-Loop Acceptance
+
+- 对应任务：Issue 4.6 `Run Stage 4 single-sample overfit sanity and write acceptance report`
+- 做了什么：
+  - 使用现有 `scripts/train_stage4_minimal.py` 执行正式单样本 overfit 验收
+  - 未重写 optical core、dataset path、wrapper 或 trainer
+- 运行命令：
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --single-sample \
+  --steps 100 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --download \
+  --run-name issue4_6_single_sample_100
+```
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --single-sample \
+  --steps 300 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --run-name issue4_6_single_sample_300
+```
+
+- 工件目录：
+  - `outputs/stage4/minimal_trainer/issue4_6_single_sample_100/`
+  - `outputs/stage4/minimal_trainer/issue4_6_single_sample_300/`
+- 结果摘要：
+
+| run | steps | initial_loss | best_loss | final_loss | verdict |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `issue4_6_single_sample_100` | 100 | 0.213564 | 0.164205 | 0.164152 | PASS |
+| `issue4_6_single_sample_300` | 300 | 0.213564 | 0.117267 | 0.116939 | PASS |
+
+- 最小结论：
+  - loss 明确下降
+  - encoder / optics 梯度持续可观测
+  - 无 NaN / Inf
+  - 单样本 closed-loop learnability 成立
+- 详细报告：
+  - `docs/execution/stage4_single_sample_report.md`
+
+## S4-02 Small-Subset Closed-Loop Acceptance
+
+- 对应任务：Issue 4.7 `Run Stage 4 small-subset closed-loop training and summarize learnability`
+- 做了什么：
+  - 使用同一 Stage 4 最小训练栈运行真实小子集闭环训练
+  - 保持 Stage 4 范围，不扩展到 Stage 5 paper settings
+- 运行命令：
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --subset-size 16 \
+  --batch-size 4 \
+  --steps 200 \
+  --preview-limit 4 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --run-name issue4_7_small_subset_16_s200
+```
+
+```bash
+python scripts/train_stage4_minimal.py \
+  --subset-size 16 \
+  --batch-size 4 \
+  --steps 400 \
+  --preview-limit 4 \
+  --device cuda \
+  --dataset-root data/raw/emnist \
+  --run-name issue4_7_small_subset_16_s400
+```
+
+- 工件目录：
+  - `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s200/`
+  - `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s400/`
+- 结果摘要：
+
+| run | steps | initial_loss | best_loss | final_loss | val_loss | verdict |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `issue4_7_small_subset_16_s200` | 200 | 0.217708 | 0.149736 | 0.180445 | 0.192186 | PASS |
+| `issue4_7_small_subset_16_s400` | 400 | 0.217708 | 0.144116 | 0.171176 | 0.190612 | PASS |
+
+- 最小结论：
+  - 小子集上 loss 下降
+  - encoder / optics 梯度持续可观测
+  - 输出随输入变化，没有明显 collapse
+  - 输出质量仍偏模糊，PSNR / SSIM 偏低
+- 详细报告：
+  - `docs/execution/stage4_small_subset_report.md`
+
+---
+
+## 当前日志边界
+
+- 本文档当前记录到 Stage 4 learnability acceptance 为止。
+- Stage 5 目前只有 planning docs：
+  - `docs/plan/stage_plan/stage5/stage5_plan.md`
+  - `docs/plan/stage_plan/stage5/stage5_issue_plan.md`
+- 在尚未出现 paper-aligned 真实运行证据前，不应在本日志中提前写入 Stage 5 结果结论。

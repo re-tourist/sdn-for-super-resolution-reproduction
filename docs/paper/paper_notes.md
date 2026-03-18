@@ -19,10 +19,10 @@
 - 数值实验主线
 - phase-only 输入调制
 - 电子编码器 + 衍射解码器联合训练
-- optical decoder 的层数对比（L=1/3/5）
+- optical decoder 的层数对比（L=1/3/5；先保证 paper-aligned configs 可运行，系统化比较后置到 Stage 6）
 - PSNR / SSIM 指标
-- blind 高频 line-pair test
-- 量化 sweep（至少推理阶段测试）
+- blind 高频 line-pair test（在 paper-aligned pipeline 就绪后进入 Stage 5）
+- 量化 sweep（至少推理阶段测试；属于总复现范围，但按当前阶段计划后置到 Stage 6）
 
 ### 暂不优先
 - 真实 THz 实验系统
@@ -300,15 +300,15 @@
 - baseline 先做 bicubic + 纯电子模型
 
 ### 第二步
-- blind line-pair test
-- efficiency on/off ablation
-- complex-valued 对照
+- blind line-pair test（Stage 5，在 paper-aligned pipeline 建立后执行）
 
 ### 第三步
-- quantization sweep
-- misalignment test / vaccination
+- efficiency on/off ablation（Stage 6）
+- complex-valued 对照（Stage 6）
+- quantization sweep（Stage 6）
 
 ### 第四步（以后）
+- misalignment test / vaccination
 - THz experimental setting closer reproduction
 
 ---
