@@ -22,5 +22,8 @@ More orders are listed in docs/run_order.md. Here are some frequently used comma
   `python scripts/train_decoder_only_small_subset.py --depth 3 --subset-size 4 --steps 80`
 - Run Stage 3 Issue 6 fixed-protocol depth sweep for L=1/3/5:
   `python scripts/train_decoder_only_small_subset_sweep.py --depths 1 3 5 --subset-size 4 --steps 80`
+- Validate Stage 5 paper-aligned optics configs for L=1/3/5:
+  `python scripts/check_stage5_optics_configs.py --config configs/stage5/stage5_optics_paper_aligned.yaml`
 - Preview the Stage 5 Issue 5.2 EMNIST 96x96 display dataset:
   `python scripts/preview_stage5_emnist_display.py --config docs/plan/stage_plan/stage5/stage5_emnist_display_config.yaml`
+

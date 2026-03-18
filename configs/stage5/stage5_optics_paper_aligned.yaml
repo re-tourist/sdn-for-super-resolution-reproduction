@@ -1,0 +1,60 @@
+optics:
+  stage5_paper_aligned:
+    note: >
+      Stage 5 paper-aligned optics config. This issue finalizes the distance
+      mapping and the readout crop/FOV policy, but does not finalize encoder
+      phase-range semantics. input_pattern_hw remains configurable; 32x32 is
+      the inherited Stage 5 default, not paper-unique truth.
+    units:
+      wavelength_unit: lambda
+      wavelength: 1.0
+      pixel_pitch_lambda: 0.533
+    grid:
+      input_pattern_hw: [32, 32]
+      layer_hw: [200, 200]
+      propagation_hw: [400, 400]
+    readout:
+      output_crop_hw: [96, 96]
+      crop_policy: center_crop
+      center_offset_hw: [152, 152]
+      fov_alignment_note: >
+        Deterministic center crop from the 400x400 sensor-plane intensity
+        grid to the 96x96 output ROI, with no extra learned offset or margin.
+    phase_mask_config:
+      init_mode: zeros
+    depths:
+      "1":
+        num_diffractive_layers: 1
+        distance_mapping:
+          input_to_first_symbol: d1
+          inter_layer_symbol: null
+          last_to_sensor_symbol: d3
+        distance_schedule:
+          input_to_first: 6.667
+          inter_layer: []
+          last_to_sensor: 173.333
+      "3":
+        num_diffractive_layers: 3
+        distance_mapping:
+          input_to_first_symbol: d1
+          inter_layer_symbol: d2
+          last_to_sensor_symbol: d3
+        distance_schedule:
+          input_to_first: 4.0
+          inter_layer: [53.334, 53.334]
+          last_to_sensor: 53.334
+      "5":
+        num_diffractive_layers: 5
+        distance_mapping:
+          input_to_first_symbol: d1
+          inter_layer_symbol: d2
+          last_to_sensor_symbol: d3
+        distance_schedule:
+          input_to_first: 2.667
+          inter_layer: [66.667, 66.667, 66.667, 66.667]
+          last_to_sensor: 80.0
+    sanity:
+      output_root: outputs/stage5/optics_sanity
+      depths: [1, 3, 5]
+      batch_size: 1
+      seed: 53
