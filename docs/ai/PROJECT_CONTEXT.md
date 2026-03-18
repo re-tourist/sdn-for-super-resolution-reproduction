@@ -37,13 +37,14 @@ The goal is to answer one question:
 - Stage 4 minimal encoder + hybrid wrapper + dataset path
 - Stage 4 minimal trainer with artifact saving
 - Stage 4 single-sample closed-loop acceptance: PASS
+  - summarized in `docs/execution/stage4_single_sample_report.md`
 - Stage 4 small-subset closed-loop acceptance: PASS (with caveats)
 
 ### Current focus
 
-- consolidate Stage 4 evidence and documentation
-- make a clear Stage 5 GO decision
-- prepare for Stage 5 paper-alignment work without over-claiming quality
+- keep Stage 4 evidence as the regression baseline
+- use Stage 5 planning docs as the main paper-alignment entry point
+- avoid sending large, lagging execution docs to helper agents unless a specific claim needs tracing
 
 ---
 
@@ -76,9 +77,9 @@ The Stage 3 optical path is already defined as:
 
 `phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`
 
-Any Stage 4 plan must build on that contract rather than redesigning the optical core.
+Any Stage 5 planning or implementation work must build on that contract rather than redesigning the optical core.
 
-### 4.2 The optical core already exposes Stage-4 hooks
+### 4.2 The optical core already exposes the integration hooks we need
 
 The current optical decoder already supports:
 
@@ -86,7 +87,7 @@ The current optical decoder already supports:
 - `forward_from_field(...)`
 - `forward_from_phase_provider(...)`
 
-This means Stage 4 should primarily solve the **upstream encoder / trainer / protocol** problem, not rewrite optics first.
+This means Stage 5 should primarily solve the **paper-aligned encoder / config / loss / eval** problem, not rewrite optics first.
 
 ### 4.3 Electronic baseline is already trusted
 
@@ -104,7 +105,7 @@ The Stage 3 decoder-only scripts currently use:
 - synthetic target patterns
 - toy grid sizes such as `24 / 32 / 48 / 20`
 
-They are useful for optical learnability verification, but they are **not yet** the Stage 4 end-to-end data pipeline.
+They are useful for optical learnability verification, but they are **not** the Stage 5 paper-aligned pipeline.
 
 ### 4.5 Some infrastructure is still missing
 
@@ -120,8 +121,7 @@ At the time of this update:
 - `scripts/eval.py` is empty
 - `scripts/visualize.py` is empty
 
-Stage 4 has a **minimal** trainer + dataset path for acceptance runs, but it is not
-a full general training/eval framework.
+Stage 4 has a **minimal** trainer + dataset path for acceptance runs, but it is not a full paper-aligned training/eval framework.
 
 ---
 
@@ -152,23 +152,49 @@ a full general training/eval framework.
 
 ---
 
-## 6. Current Documentation Sources Of Truth
+## 6. Stage-5 Review Facts A Helper Agent Should Assume
 
-When different documents disagree, a new assistant should prioritize them in this order:
+If a helper agent is asked to review or generate prompts for Stage 5, it should assume the following unless newer code disproves it:
 
-1. `docs/plan/plan_overview.md`
-2. `docs/plan/stage3_contract_freeze.md`
-3. `docs/integration/stage3_unresolved_params.md`
-4. current code in `src/` and `scripts/`
-5. `docs/paper/paper_notes.md`
-6. `docs/execution/results_summary.md`
-7. `docs/execution/experiment_log.md`
-
-This ordering exists because some older background/context docs may lag behind the repo's actual progress.
+1. Stage 4 learnability gate has passed, but quality is still far from paper-final.
+2. Stage 5 is the first phase that should align to the paper's full settings.
+3. The optical core contract remains:
+   `phi_lr -> U0 -> U_out_full -> I_out_full -> I_out_roi`
+4. Stage 5 must not silently pull Stage 6 scope forward:
+   - no quantization sweep
+   - no robustness / misalignment study
+   - no large ablation matrix
+5. The canonical Stage 4 acceptance evidence lives in:
+   - `docs/execution/stage4_single_sample_report.md`
+   - `docs/execution/stage4_small_subset_report.md`
 
 ---
 
-## 7. Immediate Stage-5 Engineering Gaps
+## 7. Current Documentation Sources Of Truth
+
+For Stage 5 review or prompt-generation tasks, prioritize documents in this order:
+
+1. `AGENTS.md`
+2. `docs/ai/PROJECT_CONTEXT.md`
+3. `docs/paper/paper_notes.md`
+4. `docs/plan/stage_plan/stage5/stage5_plan.md`
+5. `docs/plan/stage_plan/stage5/stage5_issue_plan.md`
+6. current code in `src/` and `scripts/`
+
+Only pull in the following if a specific claim must be verified:
+
+- `docs/plan/plan_overview.md`
+- `docs/plan/stage_plan/stage4/stage4_protocol_freeze.md`
+- `docs/execution/stage4_single_sample_report.md`
+- `docs/execution/stage4_small_subset_report.md`
+- `docs/execution/results_summary.md`
+- `docs/execution/experiment_log.md`
+
+This ordering is intentional: the execution logs are useful, but they are verbose, partially redundant, and more likely to lag than the curated context + Stage 5 planning docs.
+
+---
+
+## 8. Immediate Stage-5 Engineering Gaps
 
 The most likely Stage 5 work items are:
 
@@ -179,7 +205,7 @@ The most likely Stage 5 work items are:
 
 ---
 
-## 8. Known Risks
+## 9. Known Risks
 
 The main current risks are:
 
@@ -191,29 +217,30 @@ The main current risks are:
 
 ---
 
-## 9. Recommended Minimal File Package For A New Chat
+## 10. Recommended Minimal File Package For Stage-5 Review / Prompting
 
-If a user wants another assistant to plan Stage 4, the minimal useful package is:
+If a user wants another assistant to review Stage 5 plans or generate prompts for Codex, the default minimal package should be only these 5 files:
 
+- `AGENTS.md`
 - `docs/ai/PROJECT_CONTEXT.md`
-- `docs/plan/plan_overview.md`
-- `docs/plan/stage3_contract_freeze.md`
 - `docs/paper/paper_notes.md`
-- `src/models/optics/diffractive_decoder.py`
-- `scripts/train_electronic_baseline.py`
-- `scripts/train_decoder_only_small_subset.py`
+- `docs/plan/stage_plan/stage5/stage5_plan.md`
+- `docs/plan/stage_plan/stage5/stage5_issue_plan.md`
+
+Add these only when the task explicitly needs them:
+
+- `docs/plan/plan_overview.md`
+- `docs/plan/stage_plan/stage4/stage4_protocol_freeze.md`
+- `docs/execution/stage4_single_sample_report.md`
+- `docs/execution/stage4_small_subset_report.md`
+- `docs/execution/experiment_log.md`
 - `docs/execution/results_summary.md`
 
-If the user can provide a bit more context, add:
-
-- `docs/integration/stage3_unresolved_params.md`
-- `docs/integration/sdn_optics_contract.md`
-- `docs/execution/experiment_log.md`
-- `outputs/optics/decoder_only_small_subset_sweep_run1/depth_comparison.csv`
+Do **not** send large execution logs by default just because they exist. Send them only when the helper agent needs to verify a factual claim, a run result, or a documentation gap.
 
 ---
 
-## 10. One-Screen Summary
+## 11. One-Screen Summary
 
 This is a long-running reproduction project for a hybrid
 `encoder -> diffractive optical decoder` super-resolution paper.
@@ -222,12 +249,13 @@ The repo has already passed:
 
 - Stage 1 / 2 baseline and evaluation groundwork
 - Stage 3 optical module verification
+- Stage 4 minimal closed-loop learnability acceptance
 
-The repo is now entering Stage 4:
+The repo is now preparing Stage 5:
 
-- connect a minimal encoder
-- reuse the frozen optical contract
-- run the first end-to-end minimal closed loop
-- prove the system can learn
+- align the system to the paper's data / optics / loss / eval settings
+- keep Stage 4 as the trusted learnability baseline
+- avoid drifting into Stage 6 ablations too early
 
-The biggest missing piece is **not optics core**, but the **Stage 4 training pipeline around it**.
+For prompt-writing or review tasks, the most efficient context package is:
+`AGENTS.md` + `PROJECT_CONTEXT.md` + `paper_notes.md` + `stage5_plan.md` + `stage5_issue_plan.md`.
