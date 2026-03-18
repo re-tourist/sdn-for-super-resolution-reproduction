@@ -131,3 +131,45 @@
   - paper full-setting reproduction
   - hardware robustness / quantization / misalignment
   - dataset-scale end-to-end optical experiments
+
+---
+
+# Stage 4 Minimal Closed-Loop Acceptance
+
+## S4-01 Single-Sample Closed-Loop Acceptance (Issue 4.6)
+
+- 任务：使用最小 Stage 4 trainer 执行单样本 overfit，并形成验收报告
+- 运行配置（cuda）：
+  - `steps = 100` 与 `steps = 300`
+  - `dataset_root = data/raw/emnist`
+  - `hr_size = 96`
+  - optics grid: `24 / 32 / 48 / 20`
+- 工件目录：
+  - `outputs/stage4/minimal_trainer/issue4_6_single_sample_100/`
+  - `outputs/stage4/minimal_trainer/issue4_6_single_sample_300/`
+- 关键结果：
+  - loss 明确下降
+  - encoder / optics 梯度持续可观测
+  - 无 NaN / Inf
+  - 读出逐步接近目标结构
+- 结论：**PASS**
+
+## S4-02 Small-Subset Closed-Loop Acceptance (Issue 4.7)
+
+- 任务：验证 learnability 是否能扩展到小子集（非单样本）
+- 运行配置（cuda）：
+  - `subset_size = 16`
+  - `batch_size = 4`
+  - `steps = 200` 与 `steps = 400`
+  - `dataset_root = data/raw/emnist`
+  - optics grid: `24 / 32 / 48 / 20`
+- 工件目录：
+  - `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s200/`
+  - `outputs/stage4/minimal_trainer/issue4_7_small_subset_16_s400/`
+- 关键结果：
+  - loss 在小子集上仍能下降但趋于平台
+  - encoder / optics 梯度持续可观测
+  - 输出对输入有响应，无明显 collapse
+  - 无 NaN / Inf
+  - 读出仍偏模糊，PSNR/SSIM 偏低
+- 结论：**PASS（带保留项）**
