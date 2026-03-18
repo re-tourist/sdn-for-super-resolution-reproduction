@@ -1,0 +1,52 @@
+﻿data:
+  stage5_display:
+    # Finalized Issue 5.2 tiling rule:
+    # - fixed 96x96 canvas
+    # - fixed 3x3 grid of non-overlapping 32x32 cells
+    # - exactly one resized EMNIST letter per occupied cell
+    dataset_root: data/raw/emnist
+    emnist_split: letters
+    seed: 2026
+    canvas_hw: [96, 96]
+    cell_hw: [32, 32]
+    grid_shape: [3, 3]
+    fix_emnist_orientation: true
+
+    sample_counts:
+      train: 60000
+      val: 6000
+      test: 6000
+
+    letter_count_choices:
+      train: [1, 2, 3, 4]
+      val: [1, 2, 3, 4]
+      test: [6, 7, 8, 9]
+
+    augmentation:
+      train:
+        enable_rotation: true
+        rotation_choices: [0, 90, 180, 270]
+        enable_flip: true
+        flip_modes: [horizontal, vertical]
+        enable_contrast: true
+        contrast_range: [0.8, 1.2]
+      val:
+        enable_rotation: false
+        rotation_choices: [0]
+        enable_flip: false
+        flip_modes: []
+        enable_contrast: false
+        contrast_range: [1.0, 1.0]
+      test:
+        enable_rotation: false
+        rotation_choices: [0]
+        enable_flip: false
+        flip_modes: []
+        enable_contrast: false
+        contrast_range: [1.0, 1.0]
+
+    preview:
+      output_root: outputs/stage5/dataset_preview
+      preview_count: 8
+      grid_cols: 4
+      seed_offset: 17
