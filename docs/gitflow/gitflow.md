@@ -4,7 +4,7 @@
 
 ```
 main        稳定版本
-develop     日常开发主分支
+dev         日常开发主分支
 feature/*   功能开发
 fix/*       bug修复
 docs/*      文档更新
@@ -92,7 +92,7 @@ git switch -c feature/xxx
 切换分支：
 
 ```bash
-git switch develop
+git switch dev
 ```
 
 旧写法（仍可用）：
@@ -120,7 +120,7 @@ git branch -D feature/xxx
 ### 1 开发前更新代码
 
 ```bash
-git pull origin develop
+git pull origin dev
 ```
 
 ------
@@ -128,8 +128,8 @@ git pull origin develop
 ### 2 新建功能分支
 
 ```bash
-git switch develop
-git pull origin develop
+git switch dev
+git pull origin dev
 git switch -c feature/xxx
 ```
 
@@ -173,15 +173,15 @@ git push -u origin feature/xxx
 
 ------
 
-# 五、更新分支（同步 develop）
+# 五、更新分支（同步 dev）
 
 开发过程中需要同步主分支：
 
 ```bash
-git switch develop
-git pull origin develop
+git switch dev
+git pull origin dev
 git switch feature/xxx
-git merge develop
+git merge dev
 ```
 
 如果出现冲突，解决后：
@@ -189,6 +189,52 @@ git merge develop
 ```bash
 git add .
 git commit
+```
+
+### 本仓库常用：从 `docs/update` 切到 `feat/data`，并合并最新 `origin/dev`
+
+如果当前分支上还有未提交改动，尤其包含未追踪文件或目录变动，先 stash，再切分支。这样可以避免在 Git Bash / MINGW 下切分支时出现目录删除失败或反复重试的问题。
+
+推荐流程：
+
+```bash
+git status --short
+git stash push -u -m "wip before switching to feat/data"
+
+git switch feat/data
+git fetch origin
+git merge origin/dev
+```
+
+说明：
+
+- `git stash push -u` 会同时暂存未追踪文件，适合切分支前清理工作区
+- `git fetch origin` 后直接 `git merge origin/dev`，表示把最新远程 `dev` 合并到当前 `feat/data`
+- 如果这个 stash 来自 `docs/update`，不要在 `feat/data` 上立刻 `git stash pop`，避免把文档分支的改动带到数据分支
+
+当你之后回到原分支再恢复暂存内容：
+
+```bash
+git switch docs/update
+git stash pop
+```
+
+如果只是想确认 stash 还在：
+
+```bash
+git stash list
+```
+
+如果你希望本地 `dev` 也保持同步，可以使用等价流程：
+
+```bash
+git stash push -u -m "wip before switching to feat/data"
+
+git switch dev
+git pull --ff-only origin dev
+
+git switch feat/data
+git merge dev
 ```
 
 ------
@@ -274,7 +320,7 @@ git reset --hard HEAD~1
 拉取远程更新：
 
 ```bash
-git pull origin develop
+git pull origin dev
 ```
 
 推送代码：
@@ -363,8 +409,8 @@ docs: update project structure
 完整开发流程：
 
 ```bash
-git switch develop
-git pull origin develop
+git switch dev
+git pull origin dev
 
 git switch -c feature/dataset-check
 
@@ -391,5 +437,3 @@ docs/experiment-log
 exp/ablation-loss
 exp/interpolation-test
 ```
-
-git ls-files --others --exclude-standard
