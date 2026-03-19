@@ -1,0 +1,35 @@
+﻿trainer:
+  stage5_paper:
+    mode: smoke
+    protocol_note: >
+      Stage 5 smoke run. This config keeps the frozen paper-aligned dataset,
+      optics, encoder, and loss path unchanged, but uses a reduced smoke-only
+      budget to validate end-to-end stability before Issue 5.10 main-run work.
+    output_root: outputs/stage5/smoke
+    run_name: l5_smoke_cpu
+    config_paths:
+      dataset: configs/stage5/stage5_emnist_display.yaml
+      optics: configs/stage5/stage5_optics_paper_aligned.yaml
+      encoder: configs/stage5/stage5_paper_encoder.yaml
+      loss: configs/stage5/stage5_sr_loss.yaml
+    runtime:
+      steps: 4
+      batch_size: 2
+      validate_every: 1
+      preview_limit: 2
+      seed: 59
+      device: cpu
+      num_workers: 0
+      download: false
+      train_shuffle: true
+    dataset_selection:
+      train_subset_size: 12
+      val_subset_size: 4
+    model:
+      depth: 5
+    optimizer:
+      name: Adam
+      lr_encoder: 0.0005
+      lr_decoder: 0.001
+    loss_wiring:
+      input_power_source: U0_full_grid_intensity_sum
