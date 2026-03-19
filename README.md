@@ -30,6 +30,8 @@ More orders are listed in docs/run_order.md. Here are some frequently used comma
   `python scripts/check_stage5_sr_loss.py --config configs/stage5/stage5_sr_loss.yaml`
 - Run the Stage 5 paper-aligned short trainer sanity:
   `python scripts/train_stage5_paper.py --config configs/stage5/stage5_trainer_short.yaml`
+- Run the Stage 5 smoke training config:
+  `python scripts/train_stage5_paper.py --config configs/stage5/stage5_trainer_smoke.yaml --run-name issue5_9_l5_smoke`
 - Run the Stage 5 regular eval with bicubic baseline:
   `python scripts/eval_stage5_paper.py --config configs/stage5/stage5_eval.yaml --checkpoint outputs/stage5/paper_trainer/issue5_6_resume_demo/checkpoints/checkpoint_best.pt --split val`
 - Run the Stage 5 blind line-pair hook:
