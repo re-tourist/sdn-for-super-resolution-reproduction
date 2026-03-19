@@ -1,0 +1,29 @@
+eval:
+  stage5_paper:
+    output_root: outputs/stage5/eval
+    run_name: null
+    dataset_config_path: configs/stage5/stage5_emnist_display.yaml
+    runtime:
+      split: val
+      batch_size: 2
+      num_workers: 0
+      seed: 57
+      device: cpu
+      download: false
+      subset_size: null
+      preview_limit: 4
+    bicubic_baseline:
+      note: >
+        Stage 5 default bicubic baseline uses a downsample-then-upsample path
+        from the ROI-aligned target, with anti-aliasing enabled on the
+        downsample step. The 32x32 LR size matches the current Stage 5
+        encoder/optics alignment default, not paper-unique truth.
+      source_tensor: target_roi
+      input_lr_hw: [32, 32]
+      scale_factor: 3
+      implementation: downsample_then_upsample
+      downsample_mode: bicubic
+      upsample_mode: bicubic
+      align_corners: false
+      antialias_downsample: true
+      antialias_upsample: false
