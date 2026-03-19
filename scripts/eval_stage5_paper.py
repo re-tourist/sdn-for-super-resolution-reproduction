@@ -386,7 +386,11 @@ def main() -> None:
         "split": split,
         "device": str(device),
         "runtime": {
-            **runtime_cfg,
+            "split": split,
+            "batch_size": int(runtime_cfg["batch_size"]),
+            "num_workers": int(runtime_cfg["num_workers"]),
+            "seed": int(runtime_cfg["seed"]),
+            "device": str(device),
             "subset_size": subset_size,
             "preview_limit": preview_limit,
             "download": bool(args.download or runtime_cfg.get("download", False)),

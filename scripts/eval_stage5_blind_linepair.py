@@ -341,7 +341,11 @@ def main() -> None:
         "checkpoint_path": str(checkpoint_path),
         "run_name": run_name,
         "device": str(device),
-        "runtime": runtime_cfg,
+        "runtime": {
+            "device": str(device),
+            "batch_size": int(runtime_cfg["batch_size"]),
+            "preview_limit": preview_limit,
+        },
         "target_generation": target_generation_cfg,
         "checkpoint_snapshot_excerpt": {
             "depth": depth,
