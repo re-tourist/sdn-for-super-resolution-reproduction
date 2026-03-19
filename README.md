@@ -32,6 +32,7 @@ More orders are listed in docs/run_order.md. Here are some frequently used comma
   `python scripts/train_stage5_paper.py --config configs/stage5/stage5_trainer_short.yaml`
 - Run the Stage 5 regular eval with bicubic baseline:
   `python scripts/eval_stage5_paper.py --config configs/stage5/stage5_eval.yaml --checkpoint outputs/stage5/paper_trainer/issue5_6_resume_demo/checkpoints/checkpoint_best.pt --split val`
+- Run the Stage 5 blind line-pair hook:
+  `python scripts/eval_stage5_blind_linepair.py --config configs/stage5/stage5_blind_eval.yaml --checkpoint outputs/stage5/paper_trainer/issue5_6_resume_demo/checkpoints/checkpoint_best.pt`
 - Preview the Stage 5 Issue 5.2 EMNIST 96x96 display dataset:
   `python scripts/preview_stage5_emnist_display.py --config configs/stage5/stage5_emnist_display.yaml`
-

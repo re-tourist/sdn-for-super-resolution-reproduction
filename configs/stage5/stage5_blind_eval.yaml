@@ -1,0 +1,25 @@
+﻿eval:
+  stage5_blind_linepair:
+    output_root: outputs/stage5/blind_eval
+    run_name: null
+    runtime:
+      device: cpu
+      batch_size: 4
+      preview_limit: 8
+    target_generation:
+      note: >
+        Stage 5 blind targets are implemented here as deterministic centered
+        line-pair patterns on a 96x96 canvas. This is a Stage 5 engineering
+        default for blind inspection, not paper-unique truth.
+      target_family: line_pair
+      canvas_hw: [96, 96]
+      background_value: 0.0
+      line_value: 1.0
+      margin_px: 12
+      line_length_px: 72
+      line_widths_px: [1, 2]
+      gap_px: [1, 2, 3, 4, 6, 8]
+      orientations: [horizontal, vertical]
+      render_mode: binary
+      blur_sigma: 0.0
+      blur_kernel_size: 5
