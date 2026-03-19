@@ -16,6 +16,9 @@
       steps: 4
       batch_size: 2
       validate_every: 1
+      log_every: 1
+      checkpoint_every: 1
+      keep_history_in_memory: true
       preview_limit: 2
       seed: 59
       device: cpu

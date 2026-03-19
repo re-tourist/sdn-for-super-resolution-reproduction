@@ -1,0 +1,40 @@
+﻿trainer:
+  stage5_paper:
+    mode: main_run
+    protocol_note: >
+      Stage 5 phase-only L=5 main-run config. This path is launch-ready for
+      Linux-server execution, but the full long run is intentionally not
+      executed in this local workspace. The trainer is step-based, so the
+      paper-aligned 500-epoch target is represented as 750000 steps
+      (= 60000 / 40 * 500).
+    output_root: outputs/stage5/main_run
+    run_name: stage5_l5_phase_main
+    config_paths:
+      dataset: configs/stage5/stage5_emnist_display.yaml
+      optics: configs/stage5/stage5_optics_paper_aligned.yaml
+      encoder: configs/stage5/stage5_paper_encoder.yaml
+      loss: configs/stage5/stage5_sr_loss.yaml
+    runtime:
+      steps: 750000
+      batch_size: 40
+      validate_every: 1500
+      log_every: 25
+      checkpoint_every: 100
+      keep_history_in_memory: false
+      preview_limit: 4
+      seed: 60
+      device: cuda
+      num_workers: 4
+      download: false
+      train_shuffle: true
+    dataset_selection:
+      train_subset_size: null
+      val_subset_size: null
+    model:
+      depth: 5
+    optimizer:
+      name: Adam
+      lr_encoder: 0.0005
+      lr_decoder: 0.001
+    loss_wiring:
+      input_power_source: U0_full_grid_intensity_sum

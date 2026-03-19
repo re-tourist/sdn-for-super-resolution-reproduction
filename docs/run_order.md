@@ -221,3 +221,121 @@ Expected output roots:
 - The `samples/epoch_XXX.png` files now show multiple fixed validation samples in one grid.
   Earlier versions only saved the first validation sample each epoch, which made the outputs
   look like the same image was being repeated.
+
+### 6) Stage 5 main run prep: phase-only L=5 on Linux server
+
+This section prepares the real Stage 5 main run for Linux-server execution.
+Do **not** treat the local smoke run as the main result, and do **not** launch
+this full long run in the local workspace.
+
+Dedicated config:
+- `configs/stage5/stage5_trainer_main.yaml`
+
+Recommended shell variables on the Linux server:
+
+```bash
+RUN_NAME=stage5_l5_phase_main
+TRAIN_ROOT=outputs/stage5/main_run/${RUN_NAME}
+BEST_CKPT=${TRAIN_ROOT}/checkpoints/checkpoint_best.pt
+LATEST_CKPT=${TRAIN_ROOT}/checkpoints/checkpoint_latest.pt
+```
+
+First-run notes:
+- the config targets the full Stage 5 main budget: `L=5`, `batch_size=40`, `steps=750000`, `validate_every=1500`
+- the runtime also enables `log_every=25`, `checkpoint_every=100`, and `keep_history_in_memory=false` for long-run observability and bounded checkpoint size
+- the default dataset root is `data/raw/emnist`
+- if EMNIST is not already present on the server, add `--download` to the **first** training command only
+- if the server only has one visible GPU, you can ignore `CUDA_VISIBLE_DEVICES`
+- if the server has multiple GPUs and you want to pin one GPU explicitly, prefix any command with `CUDA_VISIBLE_DEVICES=<id>`
+
+Simplest main training command:
+
+```bash
+python scripts/train_stage5_paper.py \
+  --config configs/stage5/stage5_trainer_main.yaml \
+  --run-name ${RUN_NAME} \
+  --device cuda \
+  --download
+```
+
+If the dataset has already been downloaded, use the same command without `--download`.
+
+Optional single-GPU pinning form:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python scripts/train_stage5_paper.py \
+  --config configs/stage5/stage5_trainer_main.yaml \
+  --run-name ${RUN_NAME} \
+  --device cuda \
+  --download
+```
+
+Operational monitoring during training:
+- `tail -f ${TRAIN_ROOT}/train.log`
+- `cat ${TRAIN_ROOT}/status.json`
+- `ls ${TRAIN_ROOT}/checkpoints`
+- `nvidia-smi`
+
+Incremental files that now update during the run:
+- `${TRAIN_ROOT}/train.log`
+- `${TRAIN_ROOT}/status.json`
+- `${TRAIN_ROOT}/history.jsonl`
+- `${TRAIN_ROOT}/grad_stats.jsonl`
+- `${TRAIN_ROOT}/loss_curve_points.json`
+
+Important runtime notes:
+- first-time EMNIST download/extract can still spend time before the first training step; this now appears in `train.log`, but `torchvision` itself does not give a rich progress bar
+- `checkpoint_latest.pt` is updated every `100` steps and at validation points, not every step
+- the main config keeps long per-step history out of in-memory checkpoint payloads; use `history.jsonl` and `grad_stats.jsonl` as the authoritative full run trace during long execution
+
+Resume command:
+
+```bash
+python scripts/train_stage5_paper.py \
+  --config configs/stage5/stage5_trainer_main.yaml \
+  --device cuda \
+  --resume ${LATEST_CKPT}
+```
+
+Regular eval on val:
+
+```bash
+python scripts/eval_stage5_paper.py \
+  --config configs/stage5/stage5_eval.yaml \
+  --checkpoint ${BEST_CKPT} \
+  --split val \
+  --run-name ${RUN_NAME}_val_eval \
+  --device cuda
+```
+
+Regular eval on test:
+
+```bash
+python scripts/eval_stage5_paper.py \
+  --config configs/stage5/stage5_eval.yaml \
+  --checkpoint ${BEST_CKPT} \
+  --split test \
+  --run-name ${RUN_NAME}_test_eval \
+  --device cuda
+```
+
+Blind eval:
+
+```bash
+python scripts/eval_stage5_blind_linepair.py \
+  --config configs/stage5/stage5_blind_eval.yaml \
+  --checkpoint ${BEST_CKPT} \
+  --run-name ${RUN_NAME}_blind_eval \
+  --device cuda
+```
+
+Expected output directories:
+- training root: `outputs/stage5/main_run/${RUN_NAME}`
+- val eval root: `outputs/stage5/eval/${RUN_NAME}_val_eval`
+- test eval root: `outputs/stage5/eval/${RUN_NAME}_test_eval`
+- blind eval root: `outputs/stage5/blind_eval/${RUN_NAME}_blind_eval`
+
+Operational boundary:
+- this repo state prepares the launch path only
+- full long-run results remain pending actual Linux-server execution
+- after the server run, record outcomes in `docs/execution/stage5_main_run_report.md`
