@@ -1,0 +1,42 @@
+trainer:
+  stage5_paper:
+    mode: stage6_scale_fix
+    protocol_note: >
+      Stage 6 controlled scale-fix run. This keeps the frozen Stage 5
+      dataset, optics, encoder, optimizer, and L=5 depth fixed, and changes
+      only the L=5 gamma policy to 0.015 to test whether the efficiency term
+      reduces raw output-energy collapse.
+    output_root: outputs/stage6/scale_fix
+    run_name: null
+    run_name_prefix: stage6_l5_scalefix
+    config_paths:
+      dataset: configs/stage5/stage5_emnist_display.yaml
+      optics: configs/stage5/stage5_optics_paper_aligned.yaml
+      encoder: configs/stage5/stage5_paper_encoder.yaml
+      loss: configs/stage5/stage5_sr_loss.yaml
+    runtime:
+      steps: 750000
+      batch_size: 40
+      validate_every: 1500
+      log_every: 25
+      checkpoint_every: 100
+      keep_history_in_memory: false
+      preview_limit: 4
+      seed: 60
+      device: cuda
+      num_workers: 4
+      download: false
+      train_shuffle: true
+    dataset_selection:
+      train_subset_size: null
+      val_subset_size: null
+    model:
+      depth: 5
+    optimizer:
+      name: Adam
+      lr_encoder: 0.0005
+      lr_decoder: 0.001
+    loss_wiring:
+      input_power_source: U0_full_grid_intensity_sum
+    experiment_params:
+      gamma_l5: 0.015
