@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 import random
@@ -41,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--run-name", type=str, default=None)
     parser.add_argument("--steps", type=int, default=None)
+    parser.add_argument("--gamma-l5", type=float, default=None)
     parser.add_argument("--device", type=str, default=None)
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("--log-every", type=int, default=None)
@@ -77,6 +79,49 @@ def normalize_device(device_arg: str) -> torch.device:
     if normalized not in {"cpu", "cuda"}:
         raise ValueError(f"Unsupported device value: {device_arg}.")
     return torch.device(normalized)
+
+
+def format_float_token(value: float) -> str:
+    return f"{float(value):g}".replace("-", "m").replace(".", "p")
+
+
+def resolve_l5_gamma(
+    trainer_cfg: dict[str, Any],
+    loss_cfg: dict[str, Any],
+    *,
+    cli_gamma_l5: float | None,
+) -> tuple[dict[str, Any], float, str]:
+    effective_loss_cfg = copy.deepcopy(loss_cfg)
+    gamma_by_depth = dict(effective_loss_cfg["efficiency_term"]["gamma_by_depth"])
+    config_gamma_l5 = trainer_cfg.get("experiment_params", {}).get("gamma_l5")
+
+    if cli_gamma_l5 is not None:
+        effective_gamma_l5 = float(cli_gamma_l5)
+        gamma_source = "cli"
+    elif config_gamma_l5 is not None:
+        effective_gamma_l5 = float(config_gamma_l5)
+        gamma_source = "config"
+    else:
+        effective_gamma_l5 = float(gamma_by_depth["5"])
+        gamma_source = "loss_config"
+
+    gamma_by_depth["5"] = effective_gamma_l5
+    effective_loss_cfg["efficiency_term"]["gamma_by_depth"] = gamma_by_depth
+    return effective_loss_cfg, effective_gamma_l5, gamma_source
+
+
+def build_default_run_name(
+    trainer_cfg: dict[str, Any],
+    *,
+    total_steps: int,
+    gamma_l5: float,
+) -> str:
+    fixed_run_name = trainer_cfg.get("run_name")
+    if fixed_run_name not in (None, ""):
+        return str(fixed_run_name)
+
+    prefix = str(trainer_cfg.get("run_name_prefix") or trainer_cfg.get("mode") or "run")
+    return f"{prefix}_s{int(total_steps)}_g5{format_float_token(gamma_l5)}"
 
 
 def set_seed(seed: int) -> None:
@@ -760,6 +805,14 @@ def main() -> None:
     seed = int(runtime_cfg["seed"])
     set_seed(seed)
     depth = int(trainer_cfg["model"]["depth"])
+    loss_cfg = require_mapping(
+        load_yaml(trainer_cfg["config_paths"]["loss"]), "loss", "stage5_sr"
+    )
+    loss_cfg, effective_gamma_l5, gamma_l5_source = resolve_l5_gamma(
+        trainer_cfg,
+        loss_cfg,
+        cli_gamma_l5=args.gamma_l5,
+    )
 
     output_root = Path(trainer_cfg["output_root"])
     if args.resume:
@@ -767,9 +820,11 @@ def main() -> None:
         run_dir = checkpoint_path.parent.parent
         run_name = run_dir.name
     else:
-        run_name = args.run_name or trainer_cfg.get("run_name") or datetime.now(
-            timezone.utc
-        ).strftime("%Y%m%dT%H%M%SZ")
+        run_name = args.run_name or build_default_run_name(
+            trainer_cfg,
+            total_steps=total_steps,
+            gamma_l5=effective_gamma_l5,
+        )
         run_dir = output_root / run_name
 
     download = bool(args.download or runtime_cfg.get("download", False))
@@ -790,7 +845,6 @@ def main() -> None:
     dataset_cfg: dict[str, Any] | None = None
     optics_cfg: dict[str, Any] | None = None
     encoder_cfg: dict[str, Any] | None = None
-    loss_cfg: dict[str, Any] | None = None
     encoder: PaperPhaseEncoder | None = None
     decoder: DiffractiveDecoder | None = None
     loss_fn: Stage5SuperResolutionLoss | None = None
@@ -855,7 +909,8 @@ def main() -> None:
         logger.log(
             f"Runtime budget: steps={total_steps} batch_size={runtime_cfg['batch_size']} "
             f"validate_every={runtime_cfg['validate_every']} log_every={log_every} "
-            f"checkpoint_every={checkpoint_every} preview_limit={preview_limit} seed={seed}"
+            f"checkpoint_every={checkpoint_every} preview_limit={preview_limit} seed={seed} "
+            f"gamma_l5={effective_gamma_l5:.6f} gamma_l5_source={gamma_l5_source}"
         )
         logger.log(f"Output root={output_root.resolve()} run_dir={run_dir.resolve()}")
         if download:
@@ -874,10 +929,6 @@ def main() -> None:
         encoder_cfg = require_mapping(
             load_yaml(trainer_cfg["config_paths"]["encoder"]), "encoder", "stage5_paper_aligned"
         )
-        loss_cfg = require_mapping(
-            load_yaml(trainer_cfg["config_paths"]["loss"]), "loss", "stage5_sr"
-        )
-
         logger.log(
             f"Building train dataset split from root={dataset_cfg['dataset_root']} download={download}."
         )
@@ -943,6 +994,12 @@ def main() -> None:
                 "log_every": log_every,
                 "checkpoint_every": checkpoint_every,
                 "keep_history_in_memory": keep_history_in_memory,
+            },
+            "effective_experiment_params": {
+                "steps": total_steps,
+                "steps_source": "cli" if args.steps is not None else "config",
+                "gamma_l5": effective_gamma_l5,
+                "gamma_l5_source": gamma_l5_source,
             },
             "optimizer": trainer_cfg["optimizer"],
             "optimizer_parameter_groups": [
@@ -1337,6 +1394,7 @@ def main() -> None:
             "steps_per_epoch": steps_per_epoch,
             "depth": depth,
             "device": str(device),
+            "effective_experiment_params": config_snapshot["effective_experiment_params"],
             "optimizer_parameter_groups": config_snapshot["optimizer_parameter_groups"],
             "input_power_source": config_snapshot["loss_wiring"]["input_power_source"],
             "input_power_formula": config_snapshot["loss_wiring"]["implemented_formula"],

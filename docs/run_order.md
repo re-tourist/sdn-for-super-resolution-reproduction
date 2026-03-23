@@ -339,3 +339,102 @@ Operational boundary:
 - this repo state prepares the launch path only
 - full long-run results remain pending actual Linux-server execution
 - after the server run, record outcomes in `docs/execution/stage5_main_run_report.md`
+
+### 7) Stage 6 controlled scale-fix run: L=5 with `gamma = 0.015`
+
+This section defines a single-variable Stage 6 intervention on top of the
+frozen Stage 5 paper path:
+
+- keep `L=5` fixed
+- keep dataset / optics / encoder / optimizer / step budget fixed
+- change only the effective `L=5` gamma so `gamma_by_depth[5] = 0.015`
+
+Dedicated configs:
+- `configs/stage5/stage6_l5_gamma015_main.yaml`
+
+Recommended shell variables on the Linux server:
+
+```bash
+GAMMA_L5=0.015
+TOTAL_STEPS=10000
+GAMMA_TAG=${GAMMA_L5/./p}
+RUN_NAME=stage6_l5_scalefix_s${TOTAL_STEPS}_g5${GAMMA_TAG}
+TRAIN_ROOT=outputs/stage6/scale_fix/${RUN_NAME}
+BEST_CKPT=${TRAIN_ROOT}/checkpoints/checkpoint_best.pt
+LATEST_CKPT=${TRAIN_ROOT}/checkpoints/checkpoint_latest.pt
+```
+
+Controlled-comparison note:
+- this run is intended to be compared against the frozen Stage 5 main run
+  `stage5_l5_phase_main`
+- it is a Stage 6 debug intervention, not a replacement for the Stage 5 anchor
+
+Training command:
+
+```bash
+python scripts/train_stage5_paper.py \
+  --config configs/stage5/stage6_l5_gamma015_main.yaml \
+  --steps ${TOTAL_STEPS} \
+  --gamma-l5 ${GAMMA_L5} \
+  --run-name ${RUN_NAME} \
+  --device cuda \
+  --download
+```
+
+If EMNIST is already present on the server, rerun the same command without
+`--download`.
+
+Parameter note:
+- `steps` is controlled by `runtime.steps` in config and can be overridden by `--steps`
+- `gamma_l5` is controlled by `experiment_params.gamma_l5` in config and can be overridden by `--gamma-l5`
+- if you omit `--run-name`, the trainer will auto-build a name from the effective `steps` and `gamma_l5`
+- `config_snapshot.json` records both effective values and whether they came from config or CLI
+
+Resume command:
+
+```bash
+python scripts/train_stage5_paper.py \
+  --config configs/stage5/stage6_l5_gamma015_main.yaml \
+  --steps ${TOTAL_STEPS} \
+  --gamma-l5 ${GAMMA_L5} \
+  --device cuda \
+  --resume ${LATEST_CKPT}
+```
+
+Regular eval on val:
+
+```bash
+python scripts/eval_stage5_paper.py \
+  --config configs/stage5/stage5_eval.yaml \
+  --checkpoint ${BEST_CKPT} \
+  --split val \
+  --run-name ${RUN_NAME}_val_eval \
+  --device cuda
+```
+
+Regular eval on test:
+
+```bash
+python scripts/eval_stage5_paper.py \
+  --config configs/stage5/stage5_eval.yaml \
+  --checkpoint ${BEST_CKPT} \
+  --split test \
+  --run-name ${RUN_NAME}_test_eval \
+  --device cuda
+```
+
+Blind eval:
+
+```bash
+python scripts/eval_stage5_blind_linepair.py \
+  --config configs/stage5/stage5_blind_eval.yaml \
+  --checkpoint ${BEST_CKPT} \
+  --run-name ${RUN_NAME}_blind_eval \
+  --device cuda
+```
+
+Expected output directories:
+- training root: `outputs/stage6/scale_fix/${RUN_NAME}`
+- val eval root: `outputs/stage5/eval/${RUN_NAME}_val_eval`
+- test eval root: `outputs/stage5/eval/${RUN_NAME}_test_eval`
+- blind eval root: `outputs/stage5/blind_eval/${RUN_NAME}_blind_eval`
